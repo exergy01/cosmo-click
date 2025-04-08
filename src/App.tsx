@@ -189,16 +189,6 @@ function App() {
 
   return (
     <div className="App">
-      <div
-        className="background"
-        style={{
-          // Тестовый онлайн-URL для проверки
-          backgroundImage: `url(https://via.placeholder.com/1920x1080?text=Galaxy)`
-          // Раскомментируйте следующую строку, когда убедитесь, что локальный файл работает
-          // backgroundImage: `url(${process.env.PUBLIC_URL}/images/galaxy_background.jpg)`
-        }}
-        onLoad={() => console.log("Background loaded")}
-      />
       <TopBar />
       {renderContent()}
       <div className="bottom-menu">

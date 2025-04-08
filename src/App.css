@@ -6,7 +6,7 @@
   --shadow-light: 0 0 6px var(--neon-cyan);
   --shadow-glow: 0 0 12px var(--neon-cyan);
   --shadow-active: 0 0 25px var(--neon-cyan), 0 0 40px var(--neon-cyan) inset;
-  --default-bg: #000814; /* Сплошной тёмно-синий фон */
+  --default-bg: #000814;
 }
 
 /* Базовые стили */
@@ -24,20 +24,18 @@ body, html, #root, .App {
   display: flex;
   flex-direction: column;
   position: relative;
-  background-color: var(--default-bg);
   min-height: 100vh;
-}
-
-/* Фон с изображением */
-.background {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  /* Фон через CSS с тестовым URL */
+  background-image: url('https://via.placeholder.com/1920x1080?text=Galaxy');
+  /* Раскомментируйте следующую строку для локального файла, когда он будет доступен */
+  /* background-image: url('/images/galaxy_background.jpg'); */
   background-size: cover;
   background-position: center;
-  z-index: -1;
+}
+
+/* Больше нет необходимости в .background */
+.background {
+  display: none; /* Убираем этот класс, так как фон теперь в .App */
 }
 
 /* Верхняя панель */
@@ -184,7 +182,7 @@ body, html, #root, .App {
 .action-menu .menu-button {
   pointer-events: auto;
   flex: 1;
-  height: 24px; /* Оставляем 24px как компромисс */
+  height: 24px;
   line-height: 24px;
   font-size: 16px;
   font-weight: bold;
