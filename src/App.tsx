@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 import bookIcon from "./assets/icons/book.png";
 import gameIcon from "./assets/icons/game.png";
@@ -8,6 +8,23 @@ import walletIcon from "./assets/icons/wallet.png";
 
 function App() {
   const [activeTab, setActiveTab] = useState("resources");
+  const [isPortrait, setIsPortrait] = useState(window.matchMedia("(orientation: portrait)").matches);
+
+  useEffect(() => {
+    const handler = () => {
+      setIsPortrait(window.matchMedia("(orientation: portrait)").matches);
+    };
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+
+  if (!isPortrait) {
+    return (
+      <div className="rotate-warning">
+        Пожалуйста, поверните устройство в вертикальное положение 📱
+      </div>
+    );
+  }
 
   const menuItems = [
     { id: "resources", label: "РЕСУРСЫ", value: 0 },
