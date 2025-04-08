@@ -1,21 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
-import bookIcon from "./assets/icons/book.png";
-import gameIcon from "./assets/icons/game.png";
-import inviteIcon from "./assets/icons/invite.png";
-import rocketIcon from "./assets/icons/rocket.png";
-import walletIcon from "./assets/icons/wallet.png";
 
 function App() {
   const [activeTab, setActiveTab] = useState("resources");
   const [isPortrait, setIsPortrait] = useState(window.matchMedia("(orientation: portrait)").matches);
 
   useEffect(() => {
-    const handler = () => {
-      setIsPortrait(window.matchMedia("(orientation: portrait)").matches);
-    };
-    window.addEventListener("resize", handler);
-    return () => window.removeEventListener("resize", handler);
+    const mediaQuery = window.matchMedia("(orientation: portrait)");
+    const handler = () => setIsPortrait(mediaQuery.matches);
+    mediaQuery.addEventListener("change", handler);
+    return () => mediaQuery.removeEventListener("change", handler);
   }, []);
 
   if (!isPortrait) {
@@ -30,7 +24,6 @@ function App() {
     { id: "resources", label: "РЕСУРСЫ", value: 0 },
     { id: "drones", label: "ДРОНЫ", value: 5 },
     { id: "cargo", label: "КАРГО", value: 300 },
-    { id: "weapon", label: "ОРУЖИЕ", value: "в процессе" }
   ];
 
   const bottomMenuItems = [
@@ -38,18 +31,17 @@ function App() {
     { id: "wallet", icon: "💳" },
     { id: "rocket", icon: "🚀" },
     { id: "friends", icon: "👥" },
-    { id: "book", icon: "📖" }
+    { id: "book", icon: "📖" },
   ];
 
   return (
     <div className="App">
-      <div
-        className="background"
-        style={{
-          backgroundImage: `url(${process.env.PUBLIC_URL}/images/galaxy_background.jpg)`,
-        }}
-      />
-
+      {activeTab !== "game" && (
+        <div
+          className="background"
+          style={{ backgroundImage: `url(${process.env.PUBLIC_URL}/images/galaxy_background.jpg)` }}
+        />
+      )}
       <div className="top-bar">
         <div className="currency neon-border">
           <span className="label">CCC:</span>
@@ -62,51 +54,58 @@ function App() {
           <div className="subtext">Курс: 1 CS = 10000 CCC</div>
         </div>
       </div>
-
-      <div className="menu-buttons">
-        {menuItems.map((item) => (
-          <div
-            key={item.id}
-            className={`menu-button neon-border ${activeTab === item.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(item.id)}
-          >
-            {item.label}
-            <div className="menu-value">{item.value}</div>
+      {activeTab !== "game" && (
+        <>
+          <div className="menu-buttons">
+            {menuItems.map((item) => (
+              <div
+                key={item.id}
+                className={`menu-button neon-border ${activeTab === item.id ? 'active' : ''}`}
+                onClick={() => setActiveTab(item.id)}
+              >
+                {item.label}
+                <div className="menu-value">{item.value}</div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-
-      <div className="star-system" onClick={() => alert("Выбор звёздной системы скоро будет доступен!")}>
-        ⭐ Звёздная система: Андромеда I
-      </div>
-
-      <div className="images-block">
-        <img src="/images/space_bot_1.png" alt="Дрон" className="drone-image" />
-        <img src="/images/seif.png" alt="Сейф" className="seif-image" />
-      </div>
-
-      <div className="button-row">
-        <button
-          className={`neon-button halfwidth ${activeTab === "attack" ? "active" : ""}`}
-          onClick={() => setActiveTab("attack")}
-        >
-          🚀 Начать атаку
-        </button>
-        <button
-          className={`neon-button halfwidth ${activeTab === "exchange" ? "active" : ""}`}
-          onClick={() => setActiveTab("exchange")}
-        >
-          💱 Обмен CCC на CS
-        </button>
-      </div>
-
-      <button
-        className={`neon-button fullwidth ${activeTab === "quests" ? "active" : ""}`}
-        onClick={() => setActiveTab("quests")}
-      >
-        📋 Задания от администрации
-      </button>
-
+          <div className="star-system" onClick={() => alert("Выбор звёздной системы скоро будет доступен!")}>
+            ⭐ Звёздная система: Андромеда I
+          </div>
+          <div className="images-block">
+            <img src={`${process.env.PUBLIC_URL}/images/space_bot_1.png`} alt="Дрон" className="drone-image" />
+            <img src={`${process.env.PUBLIC_URL}/images/seif.png`} alt="Сейф" className="seif-image" />
+          </div>
+          <div className="button-row">
+            <button
+              className={`neon-button halfwidth ${activeTab === "attack" ? "active" : ""}`}
+              onClick={() => setActiveTab("attack")}
+            >
+              🚀 Начать атаку
+            </button>
+            <button
+              className={`neon-button halfwidth ${activeTab === "exchange" ? "active" : ""}`}
+              onClick={() => setActiveTab("exchange")}
+            >
+              💱 Обмен CCC на CS
+            </button>
+          </div>
+          <button
+            className={`neon-button fullwidth ${activeTab === "quests" ? "active" : ""}`}
+            onClick={() => setActiveTab("quests")}
+          >
+            📋 Задания от администрации
+          </button>
+        </>
+      )}
+      {activeTab === "game" && (
+        <div className="game-icons">
+          <span className="game-icon">🎯</span>
+          <span className="game-icon">🕹️</span>
+          <span className="game-icon">🧩</span>
+          <span className="game-icon">🎲</span>
+          <span className="game-icon">🏆</span>
+        </div>
+      )}
       <div className="bottom-menu">
         {bottomMenuItems.map((item) => (
           <button
