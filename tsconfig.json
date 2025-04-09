@@ -15,10 +15,16 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "baseUrl": "src",
+    "typeRoots": [
+      "./node_modules/@types",
+      "./"
+    ],
     "paths": {
       "@/*": ["*"]
     }
   },
-  "include": ["src"]
+  "include": [
+    "src",
+    "telegram.d.ts"
+  ]
 }
