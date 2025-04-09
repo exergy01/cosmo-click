@@ -50,6 +50,13 @@ body, html, #root, .App {
   font-size: 32px;
 }
 
+.currency .income-rate {
+  font-size: 16px;
+  color: var(--neon-cyan);
+  opacity: 0.8;
+  margin-top: 5px;
+}
+
 .menu-buttons {
   display: flex;
   justify-content: space-between;
@@ -276,6 +283,14 @@ body, html, #root, .App {
   text-shadow: 0 0 5px var(--neon-cyan);
 }
 
+.tab-content h3 {
+  font-size: 22px;
+  margin-top: 20px;
+  margin-bottom: 10px;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 5px var(--neon-cyan);
+}
+
 .shop {
   width: 100%;
   max-width: 600px;
@@ -380,6 +395,54 @@ body, html, #root, .App {
   opacity: 0.5;
   cursor: not-allowed;
   box-shadow: none;
+}
+
+.exchange {
+  width: 100%;
+  max-width: 600px;
+}
+
+.exchange-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.exchange-button {
+  padding: 15px;
+  font-size: 18px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--dark-bg);
+  border: 2px solid var(--neon-cyan);
+  border-radius: 10px;
+  box-shadow: var(--shadow-light);
+  transition: all 0.3s ease;
+  color: var(--neon-cyan);
+}
+
+.exchange-button:hover {
+  background: var(--darker-bg);
+  box-shadow: var(--shadow-glow);
+}
+
+.exchange-history {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.exchange-item {
+  padding: 10px;
+  font-size: 16px;
+  text-align: center;
+  background: var(--dark-bg);
+  border: 2px solid var(--neon-cyan);
+  border-radius: 10px;
+  box-shadow: var(--shadow-light);
+  color: var(--neon-cyan);
 }
 
 .rotate-warning {

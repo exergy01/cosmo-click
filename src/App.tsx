@@ -13,12 +13,32 @@ function App() {
   const [cargoLevel, setCargoLevel] = useState(1);
   const [cargoCCC, setCargoCCC] = useState(0);
   const [asteroidResources, setAsteroidResources] = useState(0);
+  const [exchanges, setExchanges] = useState<any[]>([]);
+  const [userId, setUserId] = useState<number | null>(null);
+  const [displayedResources, setDisplayedResources] = useState(Math.floor(asteroidResources));
 
-  const userId = 1; // Для тестов используем userId = 1
-
-  // Загружаем данные с сервера при загрузке
+  // Инициализация Telegram Web App и получение userId
   useEffect(() => {
-    fetch(`http://localhost:3001/user/${userId}`)
+    if (window.Telegram && window.Telegram.WebApp) {
+      window.Telegram.WebApp.ready();
+      const telegramUser = window.Telegram.WebApp.initDataUnsafe?.user;
+      if (telegramUser && telegramUser.id) {
+        setUserId(telegramUser.id);
+      } else {
+        console.error('Не удалось получить userId из Telegram');
+        setUserId(1); // Fallback для тестов
+      }
+    } else {
+      console.warn('Telegram Web App API недоступен, использую userId = 1');
+      setUserId(1); // Fallback для локальной разработки
+    }
+  }, []);
+
+  // Загружаем данные с сервера
+  useEffect(() => {
+    if (userId === null) return;
+
+    fetch(`https://cosmo-click.vercel.app/user/${userId}`)
       .then(res => res.json())
       .then(data => {
         setCcc(data.ccc);
@@ -31,7 +51,20 @@ function App() {
         setAsteroidResources(data.asteroidResources);
       })
       .catch(err => console.error('Error loading user data:', err));
-  }, []);
+
+    fetch(`https://cosmo-click.vercel.app/exchanges/${userId}`)
+      .then(res => res.json())
+      .then(data => setExchanges(data))
+      .catch(err => console.error('Error loading exchanges:', err));
+  }, [userId]);
+
+  // Обновление отображения ресурсов каждые 5 секунд
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDisplayedResources(Math.floor(asteroidResources));
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [asteroidResources]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(orientation: portrait)");
@@ -51,8 +84,7 @@ function App() {
         setCargoCCC(newCargoCCC);
         setAsteroidResources(newAsteroidResources);
 
-        // Обновляем данные на сервере
-        fetch('http://localhost:3001/update-resources', {
+        fetch('https://cosmo-click.vercel.app/update-resources', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId, cargoCCC: newCargoCCC, asteroidResources: newAsteroidResources }),
@@ -60,7 +92,7 @@ function App() {
       }, 1000);
       return () => clearInterval(interval);
     }
-  }, [drones, asteroids, cargoCCC, asteroidResources]);
+  }, [drones, asteroids, cargoCCC, asteroidResources, userId]);
 
   if (!isPortrait) {
     return (
@@ -115,7 +147,7 @@ function App() {
   const getCargoCapacity = () => cargoData[cargoLevel - 1].capacity;
 
   const mainMenuItems = [
-    { id: "main-resources", label: "РЕСУРСЫ", value: `${asteroids.length} / 13` },
+    { id: "main-resources", label: "РЕСУРСЫ", value: `${displayedResources} CCC` },
     { id: "main-drones", label: "ДРОНЫ", value: `${drones.length} / 15` },
     { id: "main-cargo", label: "КАРГО", value: `${getCargoCapacity()} CCC` },
   ];
@@ -134,18 +166,24 @@ function App() {
     { id: "bottom-guide", icon: "📖" },
   ];
 
-  const TopBar = () => (
-    <div className="top-bar">
-      <div className="currency neon-border">
-        <span className="label">CCC:</span>
-        <span className="value">{Math.floor(ccc * 100) / 100}</span>
+  const TopBar = () => {
+    const totalIncomePerDay = drones.reduce((sum, droneId) => sum + droneData[droneId - 1].income, 0);
+    const incomePerHour = totalIncomePerDay / 24;
+
+    return (
+      <div className="top-bar">
+        <div className="currency neon-border">
+          <span className="label">CCC:</span>
+          <span className="value">{Math.floor(ccc * 100) / 100}</span>
+          <div className="income-rate">{incomePerHour.toFixed(2)} в час</div>
+        </div>
+        <div className="currency neon-border">
+          <span className="label">CS:</span>
+          <span className="value">{Math.floor(cs * 100) / 100}</span>
+        </div>
       </div>
-      <div className="currency neon-border">
-        <span className="label">CS:</span>
-        <span className="value">{Math.floor(cs * 100) / 100}</span>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const MainContent = () => (
     <>
@@ -173,7 +211,7 @@ function App() {
             className={`seif-image ${cargoCCC >= 1 ? 'clickable' : ''}`}
             onClick={() => {
               if (cargoCCC >= 1) {
-                fetch('http://localhost:3001/collect-ccc', {
+                fetch('https://cosmo-click.vercel.app/collect-ccc', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ userId, amount: cargoCCC }),
@@ -233,7 +271,7 @@ function App() {
                   className={`shop-square neon-border ${asteroids.includes(asteroid.id) ? 'purchased' : ''}`}
                   disabled={cs < asteroid.cost || asteroids.includes(asteroid.id) || (asteroid.id > 1 && !asteroids.includes(asteroid.id - 1))}
                   onClick={() => {
-                    fetch('http://localhost:3001/buy-asteroid', {
+                    fetch('https://cosmo-click.vercel.app/buy-asteroid', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ userId, asteroidId: asteroid.id, cost: asteroid.cost, resources: asteroid.resources }),
@@ -259,7 +297,7 @@ function App() {
                 className={`shop-button neon-border ${asteroids.includes(asteroid.id) ? 'purchased' : ''}`}
                 disabled={cs < asteroid.cost || asteroids.includes(asteroid.id) || (asteroid.id > 1 && !asteroids.includes(asteroid.id - 1))}
                 onClick={() => {
-                  fetch('http://localhost:3001/buy-asteroid', {
+                  fetch('https://cosmo-click.vercel.app/buy-asteroid', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId, asteroidId: asteroid.id, cost: asteroid.cost, resources: asteroid.resources }),
@@ -290,7 +328,7 @@ function App() {
                   className={`shop-square neon-border ${drones.includes(drone.id) ? 'purchased' : ''}`}
                   disabled={cs < drone.cost || drones.includes(drone.id) || (drone.id > 1 && !drones.includes(drone.id - 1))}
                   onClick={() => {
-                    fetch('http://localhost:3001/buy-drone', {
+                    fetch('https://cosmo-click.vercel.app/buy-drone', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ userId, droneId: drone.id, cost: drone.cost }),
@@ -322,7 +360,7 @@ function App() {
                 className={`shop-button neon-border ${cargoLevel >= cargo.level ? 'purchased' : ''}`}
                 disabled={cs < cargo.cost || cargoLevel > cargo.level || cargo.level === 1}
                 onClick={() => {
-                  fetch('http://localhost:3001/upgrade-cargo', {
+                  fetch('https://cosmo-click.vercel.app/upgrade-cargo', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId, level: cargo.level + 1, cost: cargo.cost }),
@@ -350,7 +388,7 @@ function App() {
                 className={`task-button neon-border ${completed ? 'completed' : ''}`}
                 disabled={completed}
                 onClick={() => {
-                  fetch('http://localhost:3001/complete-task', {
+                  fetch('https://cosmo-click.vercel.app/complete-task', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId, taskId: index + 1 }),
@@ -372,10 +410,90 @@ function App() {
             ))}
           </div>
         );
+      case "action-exchange":
+        return (
+          <div className="tab-content exchange">
+            <h2>Обмен</h2>
+            <div className="exchange-buttons">
+              <button
+                className="exchange-button neon-border"
+                onClick={() => {
+                  const amountCCC = 100;
+                  fetch('https://cosmo-click.vercel.app/exchange-ccc-to-cs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, amountCCC }),
+                  })
+                    .then(res => res.json())
+                    .then(data => {
+                      if (data.success) {
+                        setCcc((prev) => prev - amountCCC);
+                        setCs((prev) => prev + data.amountCS);
+                        setExchanges((prev) => [{
+                          type: 'CCC_TO_CS',
+                          amount_from: amountCCC,
+                          amount_to: data.amountCS,
+                          timestamp: new Date().toISOString(),
+                        }, ...prev]);
+                      } else {
+                        alert(data.error);
+                      }
+                    })
+                    .catch(err => console.error('Error exchanging CCC to CS:', err));
+                }}
+              >
+                Обменять 100 CCC на 1 CS
+              </button>
+              <button
+                className="exchange-button neon-border"
+                onClick={() => {
+                  const amountCS = 1;
+                  fetch('https://cosmo-click.vercel.app/exchange-cs-to-ccc', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, amountCS }),
+                  })
+                    .then(res => res.json())
+                    .then(data => {
+                      if (data.success) {
+                        setCs((prev) => prev - amountCS);
+                        setCcc((prev) => prev + data.amountCCC);
+                        setExchanges((prev) => [{
+                          type: 'CS_TO_CCC',
+                          amount_from: amountCS,
+                          amount_to: data.amountCCC,
+                          timestamp: new Date().toISOString(),
+                        }, ...prev]);
+                      } else {
+                        alert(data.error);
+                      }
+                    })
+                    .catch(err => console.error('Error exchanging CS to CCC:', err));
+                }}
+              >
+                Обменять 1 CS на 50 CCC
+              </button>
+            </div>
+            <h3>История обменов</h3>
+            <div className="exchange-history">
+              {exchanges.length === 0 ? (
+                <p>История обменов пуста</p>
+              ) : (
+                exchanges.map((exchange, index) => (
+                  <div key={index} className="exchange-item neon-border">
+                    {exchange.type === 'CCC_TO_CS'
+                      ? `Обменял ${exchange.amount_from} CCC на ${exchange.amount_to} CS`
+                      : `Обменял ${exchange.amount_from} CS на ${exchange.amount_to} CCC`}
+                    <br />
+                    {new Date(exchange.timestamp).toLocaleString()}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        );
       case "action-attack":
         return <div className="tab-content"><h2>В стадии разработки</h2></div>;
-      case "action-exchange":
-        return <div className="tab-content"><h2>Обмен скоро будет</h2></div>;
       case "bottom-games":
         return (
           <div className="game-icons">
