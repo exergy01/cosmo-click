@@ -257,6 +257,7 @@ body, html, #root, .App {
 
 .tab-content {
   padding: 0;
+  padding-bottom: 80px; /* Добавляем отступ снизу, чтобы контент не пересекался с нижним меню */
   margin: 0;
   text-align: center;
   color: white;

@@ -189,7 +189,7 @@ function App() {
             <ShopMenu />
             <h2>Астероиды</h2>
             <div className="shop-grid">
-              {asteroidData.map((asteroid) => (
+              {asteroidData.slice(0, 12).map((asteroid) => (
                 <button
                   key={asteroid.id}
                   className={`shop-square neon-border ${asteroids.includes(asteroid.id) ? 'purchased' : ''}`}
@@ -206,6 +206,20 @@ function App() {
                 </button>
               ))}
             </div>
+            {asteroidData.slice(12).map((asteroid) => (
+              <button
+                key={asteroid.id}
+                className={`shop-button neon-border ${asteroids.includes(asteroid.id) ? 'purchased' : ''}`}
+                disabled={cs < asteroid.cost || asteroids.includes(asteroid.id) || (asteroid.id > 1 && !asteroids.includes(asteroid.id - 1))}
+                onClick={() => {
+                  setCs((prev) => prev - asteroid.cost);
+                  setAsteroids((prev) => [...prev, asteroid.id]);
+                  setAsteroidResources((prev) => prev + asteroid.resources);
+                }}
+              >
+                Астероид №{asteroid.id} ({asteroid.resources} CCC) - {asteroid.cost} CS
+              </button>
+            ))}
           </div>
         );
       case "main-drones":
@@ -240,7 +254,7 @@ function App() {
             {cargoData.map((cargo) => (
               <button
                 key={cargo.level}
-                className={`shop-button neon-border ${cargoLevel >= cargo.level ? 'purchased' : ''}`} // Изменили условие
+                className={`shop-button neon-border ${cargoLevel >= cargo.level ? 'purchased' : ''}`}
                 disabled={cs < cargo.cost || cargoLevel > cargo.level || cargo.level === 1}
                 onClick={() => {
                   setCs((prev) => prev - cargo.cost);
