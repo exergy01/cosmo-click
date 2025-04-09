@@ -14,6 +14,25 @@ function App() {
   const [cargoCCC, setCargoCCC] = useState(0);
   const [asteroidResources, setAsteroidResources] = useState(0);
 
+  const userId = 1; // Для тестов используем userId = 1
+
+  // Загружаем данные с сервера при загрузке
+  useEffect(() => {
+    fetch(`http://localhost:3001/user/${userId}`)
+      .then(res => res.json())
+      .then(data => {
+        setCcc(data.ccc);
+        setCs(data.cs);
+        setTasks(data.tasks);
+        setDrones(data.drones);
+        setAsteroids(data.asteroids);
+        setCargoLevel(data.cargoLevel);
+        setCargoCCC(data.cargoCCC);
+        setAsteroidResources(data.asteroidResources);
+      })
+      .catch(err => console.error('Error loading user data:', err));
+  }, []);
+
   useEffect(() => {
     const mediaQuery = window.matchMedia("(orientation: portrait)");
     const handler = () => setIsPortrait(mediaQuery.matches);
@@ -26,8 +45,18 @@ function App() {
       const interval = setInterval(() => {
         const totalIncomePerDay = drones.reduce((sum, droneId) => sum + droneData[droneId - 1].income, 0);
         const incomePerSecond = totalIncomePerDay / 86400;
-        setCargoCCC((prev) => Math.min(prev + incomePerSecond, getCargoCapacity()));
-        setAsteroidResources((prev) => Math.max(prev - incomePerSecond, 0));
+        const newCargoCCC = Math.min(cargoCCC + incomePerSecond, getCargoCapacity());
+        const newAsteroidResources = Math.max(asteroidResources - incomePerSecond, 0);
+
+        setCargoCCC(newCargoCCC);
+        setAsteroidResources(newAsteroidResources);
+
+        // Обновляем данные на сервере
+        fetch('http://localhost:3001/update-resources', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, cargoCCC: newCargoCCC, asteroidResources: newAsteroidResources }),
+        }).catch(err => console.error('Error updating resources:', err));
       }, 1000);
       return () => clearInterval(interval);
     }
@@ -144,8 +173,17 @@ function App() {
             className={`seif-image ${cargoCCC >= 1 ? 'clickable' : ''}`}
             onClick={() => {
               if (cargoCCC >= 1) {
-                setCcc((prev) => prev + cargoCCC);
-                setCargoCCC(0);
+                fetch('http://localhost:3001/collect-ccc', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ userId, amount: cargoCCC }),
+                })
+                  .then(res => res.json())
+                  .then(() => {
+                    setCcc((prev) => prev + cargoCCC);
+                    setCargoCCC(0);
+                  })
+                  .catch(err => console.error('Error collecting CCC:', err));
               }
             }}
           />
@@ -195,9 +233,18 @@ function App() {
                   className={`shop-square neon-border ${asteroids.includes(asteroid.id) ? 'purchased' : ''}`}
                   disabled={cs < asteroid.cost || asteroids.includes(asteroid.id) || (asteroid.id > 1 && !asteroids.includes(asteroid.id - 1))}
                   onClick={() => {
-                    setCs((prev) => prev - asteroid.cost);
-                    setAsteroids((prev) => [...prev, asteroid.id]);
-                    setAsteroidResources((prev) => prev + asteroid.resources);
+                    fetch('http://localhost:3001/buy-asteroid', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ userId, asteroidId: asteroid.id, cost: asteroid.cost, resources: asteroid.resources }),
+                    })
+                      .then(res => res.json())
+                      .then(() => {
+                        setCs((prev) => prev - asteroid.cost);
+                        setAsteroids((prev) => [...prev, asteroid.id]);
+                        setAsteroidResources((prev) => prev + asteroid.resources);
+                      })
+                      .catch(err => console.error('Error buying asteroid:', err));
                   }}
                 >
                   Астероид №{asteroid.id}<br />
@@ -212,9 +259,18 @@ function App() {
                 className={`shop-button neon-border ${asteroids.includes(asteroid.id) ? 'purchased' : ''}`}
                 disabled={cs < asteroid.cost || asteroids.includes(asteroid.id) || (asteroid.id > 1 && !asteroids.includes(asteroid.id - 1))}
                 onClick={() => {
-                  setCs((prev) => prev - asteroid.cost);
-                  setAsteroids((prev) => [...prev, asteroid.id]);
-                  setAsteroidResources((prev) => prev + asteroid.resources);
+                  fetch('http://localhost:3001/buy-asteroid', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, asteroidId: asteroid.id, cost: asteroid.cost, resources: asteroid.resources }),
+                  })
+                    .then(res => res.json())
+                    .then(() => {
+                      setCs((prev) => prev - asteroid.cost);
+                      setAsteroids((prev) => [...prev, asteroid.id]);
+                      setAsteroidResources((prev) => prev + asteroid.resources);
+                    })
+                    .catch(err => console.error('Error buying asteroid:', err));
                 }}
               >
                 Астероид №{asteroid.id} ({asteroid.resources} CCC) - {asteroid.cost} CS
@@ -234,8 +290,17 @@ function App() {
                   className={`shop-square neon-border ${drones.includes(drone.id) ? 'purchased' : ''}`}
                   disabled={cs < drone.cost || drones.includes(drone.id) || (drone.id > 1 && !drones.includes(drone.id - 1))}
                   onClick={() => {
-                    setCs((prev) => prev - drone.cost);
-                    setDrones((prev) => [...prev, drone.id]);
+                    fetch('http://localhost:3001/buy-drone', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ userId, droneId: drone.id, cost: drone.cost }),
+                    })
+                      .then(res => res.json())
+                      .then(() => {
+                        setCs((prev) => prev - drone.cost);
+                        setDrones((prev) => [...prev, drone.id]);
+                      })
+                      .catch(err => console.error('Error buying drone:', err));
                   }}
                 >
                   Бот №{drone.id}<br />
@@ -257,8 +322,17 @@ function App() {
                 className={`shop-button neon-border ${cargoLevel >= cargo.level ? 'purchased' : ''}`}
                 disabled={cs < cargo.cost || cargoLevel > cargo.level || cargo.level === 1}
                 onClick={() => {
-                  setCs((prev) => prev - cargo.cost);
-                  setCargoLevel(cargo.level + 1);
+                  fetch('http://localhost:3001/upgrade-cargo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, level: cargo.level + 1, cost: cargo.cost }),
+                  })
+                    .then(res => res.json())
+                    .then(() => {
+                      setCs((prev) => prev - cargo.cost);
+                      setCargoLevel(cargo.level + 1);
+                    })
+                    .catch(err => console.error('Error upgrading cargo:', err));
                 }}
               >
                 Уровень {cargo.level} ({cargo.capacity} CCC) - {cargo.cost === 0 ? "Бесплатно" : `${cargo.cost} CS`}
@@ -276,12 +350,21 @@ function App() {
                 className={`task-button neon-border ${completed ? 'completed' : ''}`}
                 disabled={completed}
                 onClick={() => {
-                  setCs((prev) => prev + 1);
-                  setTasks((prev) => {
-                    const newTasks = [...prev];
-                    newTasks[index] = true;
-                    return newTasks;
-                  });
+                  fetch('http://localhost:3001/complete-task', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, taskId: index + 1 }),
+                  })
+                    .then(res => res.json())
+                    .then(() => {
+                      setCs((prev) => prev + 1);
+                      setTasks((prev) => {
+                        const newTasks = [...prev];
+                        newTasks[index] = true;
+                        return newTasks;
+                      });
+                    })
+                    .catch(err => console.error('Error completing task:', err));
                 }}
               >
                 Задание №{index + 1} - 1 CS
