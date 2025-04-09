@@ -17,14 +17,13 @@
     "jsx": "react-jsx",
     "typeRoots": [
       "./node_modules/@types",
-      "./"
+      "./src"
     ],
     "paths": {
-      "@/*": ["*"]
+      "@/*": ["src/*"]
     }
   },
   "include": [
-    "src",
-    "telegram.d.ts"
+    "src"
   ]
 }
