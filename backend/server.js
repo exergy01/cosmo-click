@@ -5,14 +5,11 @@ const Database = require('better-sqlite3');
 const app = express();
 const port = process.env.PORT || 3001;
 
-// Настройка CORS
 app.use(cors());
 app.use(express.json());
 
-// Инициализация базы данных
 const db = new Database('game.db', { verbose: console.log });
 
-// Создание таблиц
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY,
@@ -23,7 +20,8 @@ db.exec(`
     asteroids TEXT DEFAULT '[]',
     cargoLevel INTEGER DEFAULT 1,
     cargoCCC REAL DEFAULT 0,
-    asteroidResources REAL DEFAULT 0
+    asteroidResources REAL DEFAULT 0,
+    energy INTEGER DEFAULT 1000
   );
 
   CREATE TABLE IF NOT EXISTS exchanges (
@@ -34,19 +32,26 @@ db.exec(`
     amount_to REAL,
     timestamp TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS game_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId INTEGER,
+    gameType TEXT,
+    result TEXT,
+    amount REAL,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
-// Получение данных пользователя
 app.get('/user/:id', (req, res) => {
   const userId = parseInt(req.params.id);
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
 
   if (!user) {
-    // Если пользователь не найден, создаём нового с начальными значениями
     const initialTasks = JSON.stringify(Array(15).fill(false));
     db.prepare(`
-      INSERT INTO users (id, ccc, cs, tasks, drones, asteroids, cargoLevel, cargoCCC, asteroidResources)
-      VALUES (?, 100, 10, ?, '[]', '[]', 1, 0, 0)
+      INSERT INTO users (id, ccc, cs, tasks, drones, asteroids, cargoLevel, cargoCCC, asteroidResources, energy)
+      VALUES (?, 100, 10, ?, '[]', '[]', 1, 0, 0, 1000)
     `).run(userId, initialTasks);
     return res.json({
       id: userId,
@@ -58,6 +63,7 @@ app.get('/user/:id', (req, res) => {
       cargoLevel: 1,
       cargoCCC: 0,
       asteroidResources: 0,
+      energy: 1000,
     });
   }
 
@@ -69,23 +75,71 @@ app.get('/user/:id', (req, res) => {
   });
 });
 
-// Обновление ресурсов
+app.get('/user-data', (req, res) => {
+  const userId = 1; // Временный хардкод для тестов
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+
+  if (!user) {
+    const initialTasks = JSON.stringify(Array(15).fill(false));
+    db.prepare(`
+      INSERT INTO users (id, ccc, cs, tasks, drones, asteroids, cargoLevel, cargoCCC, asteroidResources, energy)
+      VALUES (?, 100, 10, ?, '[]', '[]', 1, 0, 0, 1000)
+    `).run(userId, initialTasks);
+    return res.json({
+      userId: userId.toString(),
+      ccc: 100,
+      cs: 10,
+      tasks: Array(15).fill(false),
+      drones: [],
+      asteroids: [],
+      cargoLevel: 1,
+      cargoCCC: 0,
+      asteroidResources: 0,
+      energy: 1000,
+    });
+  }
+
+  res.json({
+    userId: user.id.toString(),
+    ccc: user.ccc,
+    cs: user.cs,
+    energy: user.energy,
+    asteroidResources: user.asteroidResources,
+    cargoCCC: user.cargoCCC,
+    cargoLevel: user.cargoLevel,
+  });
+});
+
 app.post('/update-resources', (req, res) => {
-  const { userId, cargoCCC, asteroidResources } = req.body;
-  db.prepare('UPDATE users SET cargoCCC = ?, asteroidResources = ? WHERE id = ?')
-    .run(cargoCCC, asteroidResources, userId);
+  const { userId, cargoCCC, asteroidResources, cs } = req.body;
+  const params = [];
+  let query = 'UPDATE users SET ';
+  if (cargoCCC !== undefined) {
+    query += 'cargoCCC = ?, ';
+    params.push(cargoCCC);
+  }
+  if (asteroidResources !== undefined) {
+    query += 'asteroidResources = ?, ';
+    params.push(asteroidResources);
+  }
+  if (cs !== undefined) {
+    query += 'cs = ?, ';
+    params.push(cs);
+  }
+  query = query.slice(0, -2);
+  query += ' WHERE id = ?';
+  params.push(userId);
+
+  db.prepare(query).run(...params);
   res.json({ success: true });
 });
 
-// Сбор CCC
 app.post('/collect-ccc', (req, res) => {
   const { userId, amount } = req.body;
-  db.prepare('UPDATE users SET ccc = ccc + ?, cargoCCC = 0 WHERE id = ?')
-    .run(amount, userId);
+  db.prepare('UPDATE users SET ccc = ccc + ?, cargoCCC = 0 WHERE id = ?').run(amount, userId);
   res.json({ success: true });
 });
 
-// Покупка астероида
 app.post('/buy-asteroid', (req, res) => {
   const { userId, asteroidId, cost, resources } = req.body;
   const user = db.prepare('SELECT cs, asteroids FROM users WHERE id = ?').get(userId);
@@ -112,7 +166,6 @@ app.post('/buy-asteroid', (req, res) => {
   res.json({ success: true });
 });
 
-// Покупка дрона
 app.post('/buy-drone', (req, res) => {
   const { userId, droneId, cost } = req.body;
   const user = db.prepare('SELECT cs, drones FROM users WHERE id = ?').get(userId);
@@ -138,7 +191,6 @@ app.post('/buy-drone', (req, res) => {
   res.json({ success: true });
 });
 
-// Обновление уровня карго
 app.post('/upgrade-cargo', (req, res) => {
   const { userId, level, cost } = req.body;
   const user = db.prepare('SELECT cs FROM users WHERE id = ?').get(userId);
@@ -151,13 +203,11 @@ app.post('/upgrade-cargo', (req, res) => {
     return res.json({ success: false, error: 'Недостаточно CS' });
   }
 
-  db.prepare('UPDATE users SET cs = cs - ?, cargoLevel = ? WHERE id = ?')
-    .run(cost, level, userId);
+  db.prepare('UPDATE users SET cs = cs - ?, cargoLevel = ? WHERE id = ?').run(cost, level, userId);
 
   res.json({ success: true });
 });
 
-// Выполнение задания
 app.post('/complete-task', (req, res) => {
   console.log('Получен запрос на /complete-task:', req.body);
   const { userId, taskId } = req.body;
@@ -172,13 +222,11 @@ app.post('/complete-task', (req, res) => {
   console.log('Текущие задачи:', tasks);
   tasks[taskId - 1] = true;
 
-  db.prepare('UPDATE users SET cs = cs + 1, tasks = ? WHERE id = ?')
-    .run(JSON.stringify(tasks), userId);
+  db.prepare('UPDATE users SET cs = cs + 1, tasks = ? WHERE id = ?').run(JSON.stringify(tasks), userId);
 
   res.json({ success: true });
 });
 
-// Обмен CCC на CS
 app.post('/exchange-ccc-to-cs', (req, res) => {
   const { userId, amountCCC } = req.body;
   const user = db.prepare('SELECT ccc FROM users WHERE id = ?').get(userId);
@@ -191,10 +239,9 @@ app.post('/exchange-ccc-to-cs', (req, res) => {
     return res.json({ success: false, error: 'Недостаточно CCC' });
   }
 
-  const amountCS = amountCCC / 100; // 100 CCC = 1 CS
+  const amountCS = amountCCC / 100;
 
-  db.prepare('UPDATE users SET ccc = ccc - ?, cs = cs + ? WHERE id = ?')
-    .run(amountCCC, amountCS, userId);
+  db.prepare('UPDATE users SET ccc = ccc - ?, cs = cs + ? WHERE id = ?').run(amountCCC, amountCS, userId);
 
   db.prepare(`
     INSERT INTO exchanges (userId, type, amount_from, amount_to, timestamp)
@@ -204,7 +251,6 @@ app.post('/exchange-ccc-to-cs', (req, res) => {
   res.json({ success: true, amountCS });
 });
 
-// Обмен CS на CCC
 app.post('/exchange-cs-to-ccc', (req, res) => {
   const { userId, amountCS } = req.body;
   const user = db.prepare('SELECT cs FROM users WHERE id = ?').get(userId);
@@ -217,10 +263,9 @@ app.post('/exchange-cs-to-ccc', (req, res) => {
     return res.json({ success: false, error: 'Недостаточно CS' });
   }
 
-  const amountCCC = amountCS * 50; // 1 CS = 50 CCC
+  const amountCCC = amountCS * 50;
 
-  db.prepare('UPDATE users SET cs = cs - ?, ccc = ccc + ? WHERE id = ?')
-    .run(amountCS, amountCCC, userId);
+  db.prepare('UPDATE users SET cs = cs - ?, ccc = ccc + ? WHERE id = ?').run(amountCS, amountCCC, userId);
 
   db.prepare(`
     INSERT INTO exchanges (userId, type, amount_from, amount_to, timestamp)
@@ -230,12 +275,39 @@ app.post('/exchange-cs-to-ccc', (req, res) => {
   res.json({ success: true, amountCCC });
 });
 
-// Получение истории обменов
 app.get('/exchanges/:userId', (req, res) => {
   const userId = parseInt(req.params.userId);
-  const exchanges = db.prepare('SELECT * FROM exchanges WHERE userId = ? ORDER BY timestamp DESC')
-    .all(userId);
+  const exchanges = db.prepare('SELECT * FROM exchanges WHERE userId = ? ORDER BY timestamp DESC').all(userId);
   res.json(exchanges);
+});
+
+app.get('/game-history/:userId', (req, res) => {
+  const userId = parseInt(req.params.userId);
+  const history = db
+    .prepare('SELECT gameType, result, amount, timestamp FROM game_history WHERE userId = ? ORDER BY timestamp DESC LIMIT 10')
+    .all(userId);
+  res.json(history);
+});
+
+app.post('/save-game-history', (req, res) => {
+  const { userId, gameType, result, amount } = req.body;
+  db.prepare(`
+    INSERT INTO game_history (userId, gameType, result, amount)
+    VALUES (?, ?, ?, ?)
+  `).run(userId, gameType, result, amount);
+  res.json({ success: true });
+});
+
+app.post('/update-currencies', (req, res) => {
+  const { userId, ccc, cs } = req.body;
+  db.prepare('UPDATE users SET ccc = ?, cs = ? WHERE id = ?').run(ccc, cs, userId);
+  res.json({ success: true });
+});
+
+app.post('/update-energy', (req, res) => {
+  const { userId, energy } = req.body;
+  db.prepare('UPDATE users SET energy = ? WHERE id = ?').run(energy, userId);
+  res.json({ success: true });
 });
 
 app.listen(port, () => {
