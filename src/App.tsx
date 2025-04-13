@@ -1,95 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import galaxyBackground from './images/galaxy_background.jpg';
-
-// Декларация типов для Telegram
-interface TelegramWebApp {
-  ready: () => void;
-  initDataUnsafe: {
-    user?: {
-      id: number;
-      first_name?: string;
-      last_name?: string;
-      username?: string;
-      language_code?: string;
-    };
-  };
-}
-
-interface Telegram {
-  WebApp: TelegramWebApp;
-}
-
-declare global {
-  interface Window {
-    Telegram: Telegram;
-  }
-}
+import { useUser } from './contexts/UserContext';
+import { useGame } from './contexts/GameContext';
+import ColorGuess from './components/games/ColorGuess';
+import SpaceTapper from './components/games/SpaceTapper';
+import SpaceThimbles from './components/games/SpaceThimbles';
 
 function App() {
-  const [activeTab, setActiveTab] = useState("bottom-rocket");
+  const { userData, setUserData, exchanges, setExchanges, isLoading } = useUser();
+  const { gameData, setGameData } = useGame();
   const [isPortrait, setIsPortrait] = useState(window.matchMedia("(orientation: portrait)").matches);
-  const [ccc, setCcc] = useState(0);
-  const [cs, setCs] = useState(0);
-  const [tasks, setTasks] = useState(Array(15).fill(false));
-  const [drones, setDrones] = useState<number[]>([]);
-  const [asteroids, setAsteroids] = useState<number[]>([]);
-  const [cargoLevel, setCargoLevel] = useState(1);
-  const [cargoCCC, setCargoCCC] = useState(0);
-  const [asteroidResources, setAsteroidResources] = useState(0);
-  const [exchanges, setExchanges] = useState<any[]>([]);
-  const [userId, setUserId] = useState<number | null>(null);
-  const [displayedResources, setDisplayedResources] = useState(Math.floor(asteroidResources));
   const [cccToCsAmount, setCccToCsAmount] = useState('');
   const [csToCccAmount, setCsToCccAmount] = useState('');
-
-  // Инициализация Telegram Web App и получение userId
-  useEffect(() => {
-    if (window.Telegram && window.Telegram.WebApp) {
-      window.Telegram.WebApp.ready();
-      const telegramUser = window.Telegram.WebApp.initDataUnsafe?.user;
-      if (telegramUser && telegramUser.id) {
-        setUserId(telegramUser.id);
-      } else {
-        console.error('Не удалось получить userId из Telegram');
-        setUserId(1); // Fallback для тестов
-      }
-    } else {
-      console.warn('Telegram Web App API недоступен, использую userId = 1');
-      setUserId(1); // Fallback для локальной разработки
-    }
-  }, []);
-
-  // Загружаем данные с сервера
-  useEffect(() => {
-    if (userId === null) return;
-
-    fetch(`http://localhost:3001/user/${userId}`)
-      .then(res => res.json())
-      .then(data => {
-        setCcc(data.ccc || 0);
-        setCs(data.cs || 0);
-        const loadedTasks = Array.isArray(data.tasks) && data.tasks.length === 15 ? data.tasks : Array(15).fill(false);
-        setTasks(loadedTasks);
-        setDrones(Array.isArray(data.drones) ? data.drones : []);
-        setAsteroids(Array.isArray(data.asteroids) ? data.asteroids : []);
-        setCargoLevel(data.cargoLevel || 1);
-        setCargoCCC(data.cargoCCC || 0);
-        setAsteroidResources(data.asteroidResources || 0);
-        setDisplayedResources(Math.floor(data.asteroidResources || 0));
-      })
-      .catch(err => console.error('Error loading user data:', err));
-
-    fetch(`http://localhost:3001/exchanges/${userId}`)
-      .then(res => res.json())
-      .then(data => setExchanges(data))
-      .catch(err => console.error('Error loading exchanges:', err));
-  }, [userId]);
-
-  // Обновляем displayedResources при смене вкладки
-  useEffect(() => {
-    setDisplayedResources(Math.floor(asteroidResources));
-  }, [activeTab, asteroidResources]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(orientation: portrait)");
@@ -100,48 +23,57 @@ function App() {
 
   // Логика добычи CCC дронами и автоматического сбора
   useEffect(() => {
-    if (drones.length > 0 && asteroids.length > 0 && asteroidResources > 0) {
+    if (userData.drones.length > 0 && userData.asteroids.length > 0 && userData.asteroidResources > 0) {
       const interval = setInterval(() => {
-        const totalIncomePerDay = drones.reduce((sum, droneId) => sum + droneData[droneId - 1].income, 0);
+        const totalIncomePerDay = userData.drones.reduce((sum, droneId) => sum + droneData[droneId - 1].income, 0);
         const incomePerSecond = totalIncomePerDay / 86400;
-        let newCargoCCC = cargoCCC + incomePerSecond;
-        let newAsteroidResources = Math.max(asteroidResources - incomePerSecond, 0);
+        let newCargoCCC = userData.cargoCCC + incomePerSecond;
+        let newAsteroidResources = Math.max(userData.asteroidResources - incomePerSecond, 0);
 
-        console.log(`Добыча CCC: cargoLevel=${cargoLevel}, newCargoCCC=${newCargoCCC}`);
+        console.log(`Добыча CCC: cargoLevel=${userData.cargoLevel}, newCargoCCC=${newCargoCCC}`);
 
         // Автоматический сбор на 5 уровне
-        if (cargoLevel === 5 && newCargoCCC >= 100) {
+        if (userData.cargoLevel === 5 && newCargoCCC >= 100) {
           console.log(`Автоматический сбор срабатывает: cargoCCC=${newCargoCCC}`);
           const amountToCollect = Math.floor(newCargoCCC / 100) * 100;
           newCargoCCC -= amountToCollect;
 
-          setCcc((prev) => {
-            console.log(`Зачисляем на баланс: ${amountToCollect} CCC`);
-            return prev + amountToCollect;
-          });
+          setUserData((prev) => ({
+            ...prev,
+            ccc: prev.ccc + amountToCollect,
+            cargoCCC: newCargoCCC,
+            asteroidResources: newAsteroidResources,
+          }));
 
           fetch('http://localhost:3001/collect-ccc', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, amount: amountToCollect }),
-          }).catch(err => console.error('Error collecting CCC:', err));
-        } else if (cargoLevel !== 5) {
+            body: JSON.stringify({ userId: userData.userId, amount: amountToCollect }),
+          }).catch((err) => console.error('Error collecting CCC:', err));
+        } else if (userData.cargoLevel !== 5) {
           // Для уровней 1-4 ограничиваем вместимостью
           newCargoCCC = Math.min(newCargoCCC, getCargoCapacity());
         }
 
-        setCargoCCC(newCargoCCC);
-        setAsteroidResources(newAsteroidResources);
+        setUserData((prev) => ({
+          ...prev,
+          cargoCCC: newCargoCCC,
+          asteroidResources: newAsteroidResources,
+        }));
 
         fetch('http://localhost:3001/update-resources', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, cargoCCC: newCargoCCC, asteroidResources: newAsteroidResources }),
-        }).catch(err => console.error('Error updating resources:', err));
+          body: JSON.stringify({
+            userId: userData.userId,
+            cargoCCC: newCargoCCC,
+            asteroidResources: newAsteroidResources,
+          }),
+        }).catch((err) => console.error('Error updating resources:', err));
       }, 1000);
       return () => clearInterval(interval);
     }
-  }, [drones, asteroids, cargoCCC, asteroidResources, userId, cargoLevel]);
+  }, [userData.drones, userData.asteroids, userData.cargoCCC, userData.asteroidResources, userData.userId, userData.cargoLevel]);
 
   if (!isPortrait) {
     return (
@@ -194,18 +126,18 @@ function App() {
   ];
 
   const getCargoCapacity = () => {
-    const cargo = cargoData[cargoLevel - 1];
+    const cargo = cargoData[userData.cargoLevel - 1];
     return cargo ? cargo.capacity : Infinity;
   };
 
   const isAutoCollect = () => {
-    const cargo = cargoData[cargoLevel - 1];
+    const cargo = cargoData[userData.cargoLevel - 1];
     return cargo ? !!cargo.autoCollect : false;
   };
 
   const mainMenuItems = [
-    { id: "main-resources", label: "РЕСУРСЫ", value: `${displayedResources} CCC` },
-    { id: "main-drones", label: "ДРОНЫ", value: `${drones.length} / 15` },
+    { id: "main-resources", label: "РЕСУРСЫ", value: `${gameData.displayedResources} CCC` },
+    { id: "main-drones", label: "ДРОНЫ", value: `${userData.drones.length} / 15` },
     { id: "main-cargo", label: "КАРГО", value: isAutoCollect() ? "Авто" : `${getCargoCapacity()} CCC` },
   ];
 
@@ -224,19 +156,19 @@ function App() {
   ];
 
   const TopBar = () => {
-    const totalIncomePerDay = drones.reduce((sum, droneId) => sum + droneData[droneId - 1].income, 0);
+    const totalIncomePerDay = userData.drones.reduce((sum, droneId) => sum + droneData[droneId - 1].income, 0);
     const incomePerHour = totalIncomePerDay / 24;
 
     return (
       <div className="top-bar">
         <div className="currency neon-border">
           <span className="label">CCC:</span>
-          <span className="value">{Math.floor(ccc * 100) / 100}</span>
+          <span className="value">{Math.floor(userData.ccc * 100) / 100}</span>
           <div className="income-rate">{incomePerHour.toFixed(2)} в час</div>
         </div>
         <div className="currency neon-border">
           <span className="label">CS:</span>
-          <span className="value">{Math.floor(cs * 100) / 100}</span>
+          <span className="value">{Math.floor(userData.cs * 100) / 100}</span>
         </div>
       </div>
     );
@@ -248,8 +180,8 @@ function App() {
         {mainMenuItems.map((item) => (
           <div
             key={item.id}
-            className={`menu-button neon-border ${activeTab === item.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(item.id)}
+            className={`menu-button neon-border ${gameData.activeTab === item.id ? 'active' : ''}`}
+            onClick={() => setGameData((prev) => ({ ...prev, activeTab: item.id }))}
           >
             {item.label}
             <div className="menu-value">{item.value}</div>
@@ -265,33 +197,39 @@ function App() {
           <img
             src={`${process.env.PUBLIC_URL}/images/seif.png`}
             alt="Сейф"
-            className={`seif-image ${cargoCCC >= 1 && !isAutoCollect() ? 'clickable' : ''}`}
+            className={`seif-image ${userData.cargoCCC >= 1 && !isAutoCollect() ? 'clickable' : ''}`}
             onClick={() => {
-              if (cargoCCC >= 1 && !isAutoCollect()) {
+              if (userData.cargoCCC >= 1 && !isAutoCollect()) {
                 fetch('http://localhost:3001/collect-ccc', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ userId, amount: cargoCCC }),
+                  body: JSON.stringify({ userId: userData.userId, amount: userData.cargoCCC }),
                 })
-                  .then(res => res.json())
+                  .then((res) => res.json())
                   .then(() => {
-                    setCcc((prev) => prev + cargoCCC);
-                    setCargoCCC(0);
-                    setDisplayedResources(Math.floor(asteroidResources));
+                    setUserData((prev) => ({
+                      ...prev,
+                      ccc: prev.ccc + prev.cargoCCC,
+                      cargoCCC: 0,
+                    }));
+                    setGameData((prev) => ({
+                      ...prev,
+                      displayedResources: Math.floor(userData.asteroidResources),
+                    }));
                   })
-                  .catch(err => console.error('Error collecting CCC:', err));
+                  .catch((err) => console.error('Error collecting CCC:', err));
               }
             }}
           />
         </div>
-        <div className="cargo-counter">{cargoCCC.toFixed(4)}</div>
+        <div className="cargo-counter">{userData.cargoCCC.toFixed(4)}</div>
       </div>
       <div className="action-menu">
         {actionMenuItems.map((item) => (
           <div
             key={item.id}
-            className={`menu-button neon-border ${activeTab === item.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(item.id)}
+            className={`menu-button neon-border ${gameData.activeTab === item.id ? 'active' : ''}`}
+            onClick={() => setGameData((prev) => ({ ...prev, activeTab: item.id }))}
           >
             {item.label}
           </div>
@@ -305,8 +243,8 @@ function App() {
       {mainMenuItems.map((item) => (
         <div
           key={item.id}
-          className={`menu-button neon-border ${activeTab === item.id ? 'active' : ''}`}
-          onClick={() => setActiveTab(item.id)}
+          className={`menu-button neon-border ${gameData.activeTab === item.id ? 'active' : ''}`}
+          onClick={() => setGameData((prev) => ({ ...prev, activeTab: item.id }))}
         >
           {item.label}
           <div className="menu-value">{item.value}</div>
@@ -326,26 +264,43 @@ function App() {
               {asteroidData.slice(0, 12).map((asteroid) => (
                 <button
                   key={asteroid.id}
-                  className={`shop-square neon-border ${asteroids.includes(asteroid.id) ? 'purchased' : ''}`}
-                  disabled={cs < asteroid.cost || asteroids.includes(asteroid.id) || (asteroid.id > 1 && !asteroids.includes(asteroid.id - 1))}
+                  className={`shop-square neon-border ${userData.asteroids.includes(asteroid.id) ? 'purchased' : ''}`}
+                  disabled={
+                    userData.cs < asteroid.cost ||
+                    userData.asteroids.includes(asteroid.id) ||
+                    (asteroid.id > 1 && !userData.asteroids.includes(asteroid.id - 1))
+                  }
                   onClick={() => {
                     fetch('http://localhost:3001/buy-asteroid', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ userId, asteroidId: asteroid.id, cost: asteroid.cost, resources: asteroid.resources }),
+                      body: JSON.stringify({
+                        userId: userData.userId,
+                        asteroidId: asteroid.id,
+                        cost: asteroid.cost,
+                        resources: asteroid.resources,
+                      }),
                     })
-                      .then(res => res.json())
+                      .then((res) => res.json())
                       .then(() => {
-                        setCs((prev) => prev - asteroid.cost);
-                        setAsteroids((prev) => [...prev, asteroid.id]);
-                        setAsteroidResources((prev) => prev + asteroid.resources);
-                        setDisplayedResources(Math.floor(asteroidResources + asteroid.resources));
+                        setUserData((prev) => ({
+                          ...prev,
+                          cs: prev.cs - asteroid.cost,
+                          asteroids: [...prev.asteroids, asteroid.id],
+                          asteroidResources: prev.asteroidResources + asteroid.resources,
+                        }));
+                        setGameData((prev) => ({
+                          ...prev,
+                          displayedResources: Math.floor(userData.asteroidResources + asteroid.resources),
+                        }));
                       })
-                      .catch(err => console.error('Error buying asteroid:', err));
+                      .catch((err) => console.error('Error buying asteroid:', err));
                   }}
                 >
-                  Астероид №{asteroid.id}<br />
-                  ({asteroid.resources} CCC)<br />
+                  Астероид №{asteroid.id}
+                  <br />
+                  ({asteroid.resources} CCC)
+                  <br />
                   {asteroid.cost} CS
                 </button>
               ))}
@@ -353,22 +308,37 @@ function App() {
             {asteroidData.slice(12).map((asteroid) => (
               <button
                 key={asteroid.id}
-                className={`shop-button neon-border ${asteroids.includes(asteroid.id) ? 'purchased' : ''}`}
-                disabled={cs < asteroid.cost || asteroids.includes(asteroid.id) || (asteroid.id > 1 && !asteroids.includes(asteroid.id - 1))}
+                className={`shop-button neon-border ${userData.asteroids.includes(asteroid.id) ? 'purchased' : ''}`}
+                disabled={
+                  userData.cs < asteroid.cost ||
+                  userData.asteroids.includes(asteroid.id) ||
+                  (asteroid.id > 1 && !userData.asteroids.includes(asteroid.id - 1))
+                }
                 onClick={() => {
                   fetch('http://localhost:3001/buy-asteroid', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId, asteroidId: asteroid.id, cost: asteroid.cost, resources: asteroid.resources }),
+                    body: JSON.stringify({
+                      userId: userData.userId,
+                      asteroidId: asteroid.id,
+                      cost: asteroid.cost,
+                      resources: asteroid.resources,
+                    }),
                   })
-                    .then(res => res.json())
+                    .then((res) => res.json())
                     .then(() => {
-                      setCs((prev) => prev - asteroid.cost);
-                      setAsteroids((prev) => [...prev, asteroid.id]);
-                      setAsteroidResources((prev) => prev + asteroid.resources);
-                      setDisplayedResources(Math.floor(asteroidResources + asteroid.resources));
+                      setUserData((prev) => ({
+                        ...prev,
+                        cs: prev.cs - asteroid.cost,
+                        asteroids: [...prev.asteroids, asteroid.id],
+                        asteroidResources: prev.asteroidResources + asteroid.resources,
+                      }));
+                      setGameData((prev) => ({
+                        ...prev,
+                        displayedResources: Math.floor(userData.asteroidResources + asteroid.resources),
+                      }));
                     })
-                    .catch(err => console.error('Error buying asteroid:', err));
+                    .catch((err) => console.error('Error buying asteroid:', err));
                 }}
               >
                 Астероид №{asteroid.id} ({asteroid.resources} CCC) - {asteroid.cost} CS
@@ -385,24 +355,37 @@ function App() {
               {droneData.map((drone) => (
                 <button
                   key={drone.id}
-                  className={`shop-square neon-border ${drones.includes(drone.id) ? 'purchased' : ''}`}
-                  disabled={cs < drone.cost || drones.includes(drone.id) || (drone.id > 1 && !drones.includes(drone.id - 1))}
+                  className={`shop-square neon-border ${userData.drones.includes(drone.id) ? 'purchased' : ''}`}
+                  disabled={
+                    userData.cs < drone.cost ||
+                    userData.drones.includes(drone.id) ||
+                    (drone.id > 1 && !userData.drones.includes(drone.id - 1))
+                  }
                   onClick={() => {
                     fetch('http://localhost:3001/buy-drone', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ userId, droneId: drone.id, cost: drone.cost }),
+                      body: JSON.stringify({
+                        userId: userData.userId,
+                        droneId: drone.id,
+                        cost: drone.cost,
+                      }),
                     })
-                      .then(res => res.json())
+                      .then((res) => res.json())
                       .then(() => {
-                        setCs((prev) => prev - drone.cost);
-                        setDrones((prev) => [...prev, drone.id]);
+                        setUserData((prev) => ({
+                          ...prev,
+                          cs: prev.cs - drone.cost,
+                          drones: [...prev.drones, drone.id],
+                        }));
                       })
-                      .catch(err => console.error('Error buying drone:', err));
+                      .catch((err) => console.error('Error buying drone:', err));
                   }}
                 >
-                  Бот №{drone.id}<br />
-                  ({drone.income} CCC/сутки)<br />
+                  Бот №{drone.id}
+                  <br />
+                  ({drone.income} CCC/сутки)
+                  <br />
                   {drone.cost} CS
                 </button>
               ))}
@@ -417,23 +400,31 @@ function App() {
             {cargoData.map((cargo) => (
               <button
                 key={cargo.level}
-                className={`shop-button neon-border ${cargoLevel >= cargo.level ? 'purchased' : ''}`}
-                disabled={cs < cargo.cost || cargoLevel > cargo.level}
+                className={`shop-button neon-border ${userData.cargoLevel >= cargo.level ? 'purchased' : ''}`}
+                disabled={userData.cs < cargo.cost || userData.cargoLevel > cargo.level}
                 onClick={() => {
                   fetch('http://localhost:3001/upgrade-cargo', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId, level: cargo.level, cost: cargo.cost }),
+                    body: JSON.stringify({
+                      userId: userData.userId,
+                      level: cargo.level,
+                      cost: cargo.cost,
+                    }),
                   })
-                    .then(res => res.json())
+                    .then((res) => res.json())
                     .then(() => {
-                      setCs((prev) => prev - cargo.cost);
-                      setCargoLevel(cargo.level);
+                      setUserData((prev) => ({
+                        ...prev,
+                        cs: prev.cs - cargo.cost,
+                        cargoLevel: cargo.level,
+                      }));
                     })
-                    .catch(err => console.error('Error upgrading cargo:', err));
+                    .catch((err) => console.error('Error upgrading cargo:', err));
                 }}
               >
-                Уровень {cargo.level} {cargo.autoCollect ? "(Авто)" : `(${cargo.capacity} CCC)`} - {cargo.cost === 0 ? "Бесплатно" : `${cargo.cost} CS`}
+                Уровень {cargo.level} {cargo.autoCollect ? "(Авто)" : `(${cargo.capacity} CCC)`} -{' '}
+                {cargo.cost === 0 ? "Бесплатно" : `${cargo.cost} CS`}
               </button>
             ))}
           </div>
@@ -442,7 +433,7 @@ function App() {
         return (
           <div className="tab-content tasks">
             <h2>Задания</h2>
-            {tasks.map((completed, index) => (
+            {userData.tasks.map((completed, index) => (
               <button
                 key={index}
                 className={`task-button neon-border ${completed ? 'completed' : ''}`}
@@ -451,18 +442,17 @@ function App() {
                   fetch('http://localhost:3001/complete-task', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId, taskId: index + 1 }),
+                    body: JSON.stringify({ userId: userData.userId, taskId: index + 1 }),
                   })
-                    .then(res => res.json())
+                    .then((res) => res.json())
                     .then(() => {
-                      setCs((prev) => prev + 1);
-                      setTasks((prev) => {
-                        const newTasks = [...prev];
+                      setUserData((prev) => {
+                        const newTasks = [...prev.tasks];
                         newTasks[index] = true;
-                        return newTasks;
+                        return { ...prev, cs: prev.cs + 1, tasks: newTasks };
                       });
                     })
-                    .catch(err => console.error('Error completing task:', err));
+                    .catch((err) => console.error('Error completing task:', err));
                 }}
               >
                 Задание №{index + 1} - 1 CS
@@ -475,17 +465,15 @@ function App() {
         const csToCccRate = 50;
         const cccToCsResult = (parseFloat(cccToCsAmount) || 0) / cccToCsRate;
         const csToCccResult = (parseFloat(csToCccAmount) || 0) * csToCccRate;
-        const canExchangeCccToCs = parseFloat(cccToCsAmount) > 0 && parseFloat(cccToCsAmount) <= ccc;
-        const canExchangeCsToCcc = parseFloat(csToCccAmount) > 0 && parseFloat(csToCccAmount) <= cs;
+        const canExchangeCccToCs = parseFloat(cccToCsAmount) > 0 && parseFloat(cccToCsAmount) <= userData.ccc;
+        const canExchangeCsToCcc = parseFloat(csToCccAmount) > 0 && parseFloat(csToCccAmount) <= userData.cs;
 
         return (
           <div className="tab-content exchange">
             <h2>Обмен</h2>
             <div className="exchange-section">
               <h3>Обмен CCC на CS</h3>
-              <div className="balance-info">
-                Доступно: {Math.floor(ccc * 100) / 100} CCC
-              </div>
+              <div className="balance-info">Доступно: {Math.floor(userData.ccc * 100) / 100} CCC</div>
               <div className="exchange-input">
                 <input
                   type="number"
@@ -497,14 +485,12 @@ function App() {
                 />
                 <button
                   className="max-button neon-border"
-                  onClick={() => setCccToCsAmount(ccc.toString())}
+                  onClick={() => setCccToCsAmount(userData.ccc.toString())}
                 >
                   Максимум
                 </button>
               </div>
-              <div className="exchange-result">
-                Вы получите: {cccToCsResult.toFixed(2)} CS
-              </div>
+              <div className="exchange-result">Вы получите: {cccToCsResult.toFixed(2)} CS</div>
               <button
                 className="exchange-button neon-border"
                 disabled={!canExchangeCccToCs}
@@ -513,25 +499,31 @@ function App() {
                   fetch('http://localhost:3001/exchange-ccc-to-cs', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId, amountCCC }),
+                    body: JSON.stringify({ userId: userData.userId, amountCCC }),
                   })
-                    .then(res => res.json())
-                    .then(data => {
+                    .then((res) => res.json())
+                    .then((data) => {
                       if (data.success) {
-                        setCcc((prev) => prev - amountCCC);
-                        setCs((prev) => prev + data.amountCS);
-                        setExchanges((prev) => [{
-                          type: 'CCC_TO_CS',
-                          amount_from: amountCCC,
-                          amount_to: data.amountCS,
-                          timestamp: new Date().toISOString(),
-                        }, ...prev]);
+                        setUserData((prev) => ({
+                          ...prev,
+                          ccc: prev.ccc - amountCCC,
+                          cs: prev.cs + data.amountCS,
+                        }));
+                        setExchanges((prev) => [
+                          {
+                            type: 'CCC_TO_CS',
+                            amount_from: amountCCC,
+                            amount_to: data.amountCS,
+                            timestamp: new Date().toISOString(),
+                          },
+                          ...prev,
+                        ]);
                         setCccToCsAmount('');
                       } else {
                         alert(data.error);
                       }
                     })
-                    .catch(err => console.error('Error exchanging CCC to CS:', err));
+                    .catch((err) => console.error('Error exchanging CCC to CS:', err));
                 }}
               >
                 Обменять
@@ -540,9 +532,7 @@ function App() {
 
             <div className="exchange-section">
               <h3>Обмен CS на CCC</h3>
-              <div className="balance-info">
-                Доступно: {Math.floor(cs * 100) / 100} CS
-              </div>
+              <div className="balance-info">Доступно: {Math.floor(userData.cs * 100) / 100} CS</div>
               <div className="exchange-input">
                 <input
                   type="number"
@@ -554,14 +544,12 @@ function App() {
                 />
                 <button
                   className="max-button neon-border"
-                  onClick={() => setCsToCccAmount(cs.toString())}
+                  onClick={() => setCsToCccAmount(userData.cs.toString())}
                 >
                   Максимум
                 </button>
               </div>
-              <div className="exchange-result">
-                Вы получите: {csToCccResult.toFixed(2)} CCC
-              </div>
+              <div className="exchange-result">Вы получите: {csToCccResult.toFixed(2)} CCC</div>
               <button
                 className="exchange-button neon-border"
                 disabled={!canExchangeCsToCcc}
@@ -570,25 +558,31 @@ function App() {
                   fetch('http://localhost:3001/exchange-cs-to-ccc', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId, amountCS }),
+                    body: JSON.stringify({ userId: userData.userId, amountCS }),
                   })
-                    .then(res => res.json())
-                    .then(data => {
+                    .then((res) => res.json())
+                    .then((data) => {
                       if (data.success) {
-                        setCs((prev) => prev - amountCS);
-                        setCcc((prev) => prev + data.amountCCC);
-                        setExchanges((prev) => [{
-                          type: 'CS_TO_CCC',
-                          amount_from: amountCS,
-                          amount_to: data.amountCCC,
-                          timestamp: new Date().toISOString(),
-                        }, ...prev]);
+                        setUserData((prev) => ({
+                          ...prev,
+                          cs: prev.cs - amountCS,
+                          ccc: prev.ccc + data.amountCCC,
+                        }));
+                        setExchanges((prev) => [
+                          {
+                            type: 'CS_TO_CCC',
+                            amount_from: amountCS,
+                            amount_to: data.amountCCC,
+                            timestamp: new Date().toISOString(),
+                          },
+                          ...prev,
+                        ]);
                         setCsToCccAmount('');
                       } else {
                         alert(data.error);
                       }
                     })
-                    .catch(err => console.error('Error exchanging CS to CCC:', err));
+                    .catch((err) => console.error('Error exchanging CS to CCC:', err));
                 }}
               >
                 Обменять
@@ -617,36 +611,71 @@ function App() {
         return <div className="tab-content"><h2>В стадии разработки</h2></div>;
       case "bottom-games":
         return (
-          <div className="game-icons">
-            <span className="game-icon">🎯</span>
-            <span className="game-icon">🕹️</span>
-            <span className="game-icon">🧩</span>
-            <span className="game-icon">🎲</span>
-            <span className="game-icon">🏆</span>
+          <div className="game-selection">
+            <h2>Выберите игру</h2>
+            <div className="game-buttons">
+              <button
+                className="menu-button neon-border"
+                onClick={() => setGameData((prev) => ({ ...prev, activeTab: 'game-space-tapper' }))}
+              >
+                Space Tapper
+              </button>
+              <button
+                className="menu-button neon-border"
+                onClick={() => setGameData((prev) => ({ ...prev, activeTab: 'game-space-thimbles' }))}
+              >
+                Space Thimbles
+              </button>
+              <button
+                className="menu-button neon-border"
+                onClick={() => setGameData((prev) => ({ ...prev, activeTab: 'game-color-guess' }))}
+              >
+                Color Guess
+              </button>
+              <button
+                className="menu-button neon-border"
+                onClick={() => setGameData((prev) => ({ ...prev, activeTab: 'bottom-games' }))}
+              >
+                Назад
+              </button>
+            </div>
           </div>
         );
+      case "game-space-tapper":
+        return <SpaceTapper />;
+      case "game-space-thimbles":
+        return <SpaceThimbles />;
+      case "game-color-guess":
+        return <ColorGuess />;
       default:
         return <div className="tab-content">Неизвестная вкладка</div>;
     }
   };
 
   const renderContent = () => {
-    if (activeTab === "bottom-rocket") {
+    if (gameData.activeTab === "bottom-rocket") {
       return <MainContent />;
     }
-    return <TabContent tabId={activeTab} />;
+    return <TabContent tabId={gameData.activeTab} />;
   };
 
+  if (isLoading) {
+    return <div className="loading">Загрузка...</div>;
+  }
+
   return (
-    <div className="App" style={{ backgroundImage: `url(${galaxyBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+    <div
+      className="App"
+      style={{ backgroundImage: `url(${galaxyBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+    >
       <TopBar />
       {renderContent()}
       <div className="bottom-menu">
         {bottomMenuItems.map((item) => (
           <button
             key={item.id}
-            className={`neon-icon-button ${activeTab === item.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(item.id)}
+            className={`neon-icon-button ${gameData.activeTab === item.id ? 'active' : ''}`}
+            onClick={() => setGameData((prev) => ({ ...prev, activeTab: item.id }))}
           >
             {item.icon}
           </button>
