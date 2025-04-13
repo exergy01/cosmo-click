@@ -10,9 +10,9 @@ app.use(cors());
 app.use(express.json());
 
 // Инициализация базы данных
-const db = new Database('cosmo-click.db', { verbose: console.log });
+const db = new Database('game.db', { verbose: console.log });
 
-// Создание таблиц (пример)
+// Создание таблиц
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY,
@@ -42,16 +42,17 @@ app.get('/user/:id', (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
 
   if (!user) {
-    // Если пользователь не найден, создаём нового
+    // Если пользователь не найден, создаём нового с начальными значениями
+    const initialTasks = JSON.stringify(Array(15).fill(false));
     db.prepare(`
       INSERT INTO users (id, ccc, cs, tasks, drones, asteroids, cargoLevel, cargoCCC, asteroidResources)
-      VALUES (?, 0, 0, '[]', '[]', '[]', 1, 0, 0)
-    `).run(userId);
+      VALUES (?, 100, 10, ?, '[]', '[]', 1, 0, 0)
+    `).run(userId, initialTasks);
     return res.json({
       id: userId,
-      ccc: 0,
-      cs: 0,
-      tasks: [],
+      ccc: 100,
+      cs: 10,
+      tasks: Array(15).fill(false),
       drones: [],
       asteroids: [],
       cargoLevel: 1,
@@ -89,6 +90,10 @@ app.post('/buy-asteroid', (req, res) => {
   const { userId, asteroidId, cost, resources } = req.body;
   const user = db.prepare('SELECT cs, asteroids FROM users WHERE id = ?').get(userId);
 
+  if (!user) {
+    return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+  }
+
   if (user.cs < cost) {
     return res.json({ success: false, error: 'Недостаточно CS' });
   }
@@ -112,6 +117,10 @@ app.post('/buy-drone', (req, res) => {
   const { userId, droneId, cost } = req.body;
   const user = db.prepare('SELECT cs, drones FROM users WHERE id = ?').get(userId);
 
+  if (!user) {
+    return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+  }
+
   if (user.cs < cost) {
     return res.json({ success: false, error: 'Недостаточно CS' });
   }
@@ -134,6 +143,10 @@ app.post('/upgrade-cargo', (req, res) => {
   const { userId, level, cost } = req.body;
   const user = db.prepare('SELECT cs FROM users WHERE id = ?').get(userId);
 
+  if (!user) {
+    return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+  }
+
   if (user.cs < cost) {
     return res.json({ success: false, error: 'Недостаточно CS' });
   }
@@ -146,10 +159,17 @@ app.post('/upgrade-cargo', (req, res) => {
 
 // Выполнение задания
 app.post('/complete-task', (req, res) => {
+  console.log('Получен запрос на /complete-task:', req.body);
   const { userId, taskId } = req.body;
   const user = db.prepare('SELECT tasks FROM users WHERE id = ?').get(userId);
 
+  if (!user) {
+    console.error('Пользователь не найден:', userId);
+    return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+  }
+
   const tasks = JSON.parse(user.tasks);
+  console.log('Текущие задачи:', tasks);
   tasks[taskId - 1] = true;
 
   db.prepare('UPDATE users SET cs = cs + 1, tasks = ? WHERE id = ?')
@@ -162,6 +182,10 @@ app.post('/complete-task', (req, res) => {
 app.post('/exchange-ccc-to-cs', (req, res) => {
   const { userId, amountCCC } = req.body;
   const user = db.prepare('SELECT ccc FROM users WHERE id = ?').get(userId);
+
+  if (!user) {
+    return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+  }
 
   if (user.ccc < amountCCC) {
     return res.json({ success: false, error: 'Недостаточно CCC' });
@@ -184,6 +208,10 @@ app.post('/exchange-ccc-to-cs', (req, res) => {
 app.post('/exchange-cs-to-ccc', (req, res) => {
   const { userId, amountCS } = req.body;
   const user = db.prepare('SELECT cs FROM users WHERE id = ?').get(userId);
+
+  if (!user) {
+    return res.status(404).json({ success: false, error: 'Пользователь не найден' });
+  }
 
   if (user.cs < amountCS) {
     return res.json({ success: false, error: 'Недостаточно CS' });

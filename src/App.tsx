@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 import galaxyBackground from './images/galaxy_background.jpg';
 
-// Декларация типов для Telegram (временное решение, пока не заработает telegram.d.ts)
+// Декларация типов для Telegram
 interface TelegramWebApp {
   ready: () => void;
   initDataUnsafe: {
@@ -40,6 +40,8 @@ function App() {
   const [exchanges, setExchanges] = useState<any[]>([]);
   const [userId, setUserId] = useState<number | null>(null);
   const [displayedResources, setDisplayedResources] = useState(Math.floor(asteroidResources));
+  const [cccToCsAmount, setCccToCsAmount] = useState('');
+  const [csToCccAmount, setCsToCccAmount] = useState('');
 
   // Инициализация Telegram Web App и получение userId
   useEffect(() => {
@@ -62,33 +64,32 @@ function App() {
   useEffect(() => {
     if (userId === null) return;
 
-    fetch(`https://cosmo-click.vercel.app/user/${userId}`)
+    fetch(`http://localhost:3001/user/${userId}`)
       .then(res => res.json())
       .then(data => {
-        setCcc(data.ccc);
-        setCs(data.cs);
-        setTasks(data.tasks);
-        setDrones(data.drones);
-        setAsteroids(data.asteroids);
-        setCargoLevel(data.cargoLevel);
-        setCargoCCC(data.cargoCCC);
-        setAsteroidResources(data.asteroidResources);
+        setCcc(data.ccc || 0);
+        setCs(data.cs || 0);
+        const loadedTasks = Array.isArray(data.tasks) && data.tasks.length === 15 ? data.tasks : Array(15).fill(false);
+        setTasks(loadedTasks);
+        setDrones(Array.isArray(data.drones) ? data.drones : []);
+        setAsteroids(Array.isArray(data.asteroids) ? data.asteroids : []);
+        setCargoLevel(data.cargoLevel || 1);
+        setCargoCCC(data.cargoCCC || 0);
+        setAsteroidResources(data.asteroidResources || 0);
+        setDisplayedResources(Math.floor(data.asteroidResources || 0));
       })
       .catch(err => console.error('Error loading user data:', err));
 
-    fetch(`https://cosmo-click.vercel.app/exchanges/${userId}`)
+    fetch(`http://localhost:3001/exchanges/${userId}`)
       .then(res => res.json())
       .then(data => setExchanges(data))
       .catch(err => console.error('Error loading exchanges:', err));
   }, [userId]);
 
-  // Обновление отображения ресурсов каждые 5 секунд
+  // Обновляем displayedResources при смене вкладки
   useEffect(() => {
-    const interval = setInterval(() => {
-      setDisplayedResources(Math.floor(asteroidResources));
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [asteroidResources]);
+    setDisplayedResources(Math.floor(asteroidResources));
+  }, [activeTab, asteroidResources]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(orientation: portrait)");
@@ -97,18 +98,42 @@ function App() {
     return () => mediaQuery.removeEventListener("change", handler);
   }, []);
 
+  // Логика добычи CCC дронами и автоматического сбора
   useEffect(() => {
-    if (drones.length > 0 && asteroids.length > 0 && cargoCCC < getCargoCapacity() && asteroidResources > 0) {
+    if (drones.length > 0 && asteroids.length > 0 && asteroidResources > 0) {
       const interval = setInterval(() => {
         const totalIncomePerDay = drones.reduce((sum, droneId) => sum + droneData[droneId - 1].income, 0);
         const incomePerSecond = totalIncomePerDay / 86400;
-        const newCargoCCC = Math.min(cargoCCC + incomePerSecond, getCargoCapacity());
-        const newAsteroidResources = Math.max(asteroidResources - incomePerSecond, 0);
+        let newCargoCCC = cargoCCC + incomePerSecond;
+        let newAsteroidResources = Math.max(asteroidResources - incomePerSecond, 0);
+
+        console.log(`Добыча CCC: cargoLevel=${cargoLevel}, newCargoCCC=${newCargoCCC}`);
+
+        // Автоматический сбор на 5 уровне
+        if (cargoLevel === 5 && newCargoCCC >= 100) {
+          console.log(`Автоматический сбор срабатывает: cargoCCC=${newCargoCCC}`);
+          const amountToCollect = Math.floor(newCargoCCC / 100) * 100;
+          newCargoCCC -= amountToCollect;
+
+          setCcc((prev) => {
+            console.log(`Зачисляем на баланс: ${amountToCollect} CCC`);
+            return prev + amountToCollect;
+          });
+
+          fetch('http://localhost:3001/collect-ccc', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, amount: amountToCollect }),
+          }).catch(err => console.error('Error collecting CCC:', err));
+        } else if (cargoLevel !== 5) {
+          // Для уровней 1-4 ограничиваем вместимостью
+          newCargoCCC = Math.min(newCargoCCC, getCargoCapacity());
+        }
 
         setCargoCCC(newCargoCCC);
         setAsteroidResources(newAsteroidResources);
 
-        fetch('https://cosmo-click.vercel.app/update-resources', {
+        fetch('http://localhost:3001/update-resources', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId, cargoCCC: newCargoCCC, asteroidResources: newAsteroidResources }),
@@ -116,7 +141,7 @@ function App() {
       }, 1000);
       return () => clearInterval(interval);
     }
-  }, [drones, asteroids, cargoCCC, asteroidResources, userId]);
+  }, [drones, asteroids, cargoCCC, asteroidResources, userId, cargoLevel]);
 
   if (!isPortrait) {
     return (
@@ -165,15 +190,23 @@ function App() {
     { level: 2, capacity: 200, cost: 5 },
     { level: 3, capacity: 2000, cost: 15 },
     { level: 4, capacity: 20000, cost: 45 },
-    { level: 5, capacity: Infinity, cost: 100 },
+    { level: 5, capacity: Infinity, cost: 100, autoCollect: true },
   ];
 
-  const getCargoCapacity = () => cargoData[cargoLevel - 1].capacity;
+  const getCargoCapacity = () => {
+    const cargo = cargoData[cargoLevel - 1];
+    return cargo ? cargo.capacity : Infinity;
+  };
+
+  const isAutoCollect = () => {
+    const cargo = cargoData[cargoLevel - 1];
+    return cargo ? !!cargo.autoCollect : false;
+  };
 
   const mainMenuItems = [
     { id: "main-resources", label: "РЕСУРСЫ", value: `${displayedResources} CCC` },
     { id: "main-drones", label: "ДРОНЫ", value: `${drones.length} / 15` },
-    { id: "main-cargo", label: "КАРГО", value: `${getCargoCapacity()} CCC` },
+    { id: "main-cargo", label: "КАРГО", value: isAutoCollect() ? "Авто" : `${getCargoCapacity()} CCC` },
   ];
 
   const actionMenuItems = [
@@ -232,10 +265,10 @@ function App() {
           <img
             src={`${process.env.PUBLIC_URL}/images/seif.png`}
             alt="Сейф"
-            className={`seif-image ${cargoCCC >= 1 ? 'clickable' : ''}`}
+            className={`seif-image ${cargoCCC >= 1 && !isAutoCollect() ? 'clickable' : ''}`}
             onClick={() => {
-              if (cargoCCC >= 1) {
-                fetch('https://cosmo-click.vercel.app/collect-ccc', {
+              if (cargoCCC >= 1 && !isAutoCollect()) {
+                fetch('http://localhost:3001/collect-ccc', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ userId, amount: cargoCCC }),
@@ -244,6 +277,7 @@ function App() {
                   .then(() => {
                     setCcc((prev) => prev + cargoCCC);
                     setCargoCCC(0);
+                    setDisplayedResources(Math.floor(asteroidResources));
                   })
                   .catch(err => console.error('Error collecting CCC:', err));
               }
@@ -295,7 +329,7 @@ function App() {
                   className={`shop-square neon-border ${asteroids.includes(asteroid.id) ? 'purchased' : ''}`}
                   disabled={cs < asteroid.cost || asteroids.includes(asteroid.id) || (asteroid.id > 1 && !asteroids.includes(asteroid.id - 1))}
                   onClick={() => {
-                    fetch('https://cosmo-click.vercel.app/buy-asteroid', {
+                    fetch('http://localhost:3001/buy-asteroid', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ userId, asteroidId: asteroid.id, cost: asteroid.cost, resources: asteroid.resources }),
@@ -305,6 +339,7 @@ function App() {
                         setCs((prev) => prev - asteroid.cost);
                         setAsteroids((prev) => [...prev, asteroid.id]);
                         setAsteroidResources((prev) => prev + asteroid.resources);
+                        setDisplayedResources(Math.floor(asteroidResources + asteroid.resources));
                       })
                       .catch(err => console.error('Error buying asteroid:', err));
                   }}
@@ -321,7 +356,7 @@ function App() {
                 className={`shop-button neon-border ${asteroids.includes(asteroid.id) ? 'purchased' : ''}`}
                 disabled={cs < asteroid.cost || asteroids.includes(asteroid.id) || (asteroid.id > 1 && !asteroids.includes(asteroid.id - 1))}
                 onClick={() => {
-                  fetch('https://cosmo-click.vercel.app/buy-asteroid', {
+                  fetch('http://localhost:3001/buy-asteroid', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId, asteroidId: asteroid.id, cost: asteroid.cost, resources: asteroid.resources }),
@@ -331,6 +366,7 @@ function App() {
                       setCs((prev) => prev - asteroid.cost);
                       setAsteroids((prev) => [...prev, asteroid.id]);
                       setAsteroidResources((prev) => prev + asteroid.resources);
+                      setDisplayedResources(Math.floor(asteroidResources + asteroid.resources));
                     })
                     .catch(err => console.error('Error buying asteroid:', err));
                 }}
@@ -352,7 +388,7 @@ function App() {
                   className={`shop-square neon-border ${drones.includes(drone.id) ? 'purchased' : ''}`}
                   disabled={cs < drone.cost || drones.includes(drone.id) || (drone.id > 1 && !drones.includes(drone.id - 1))}
                   onClick={() => {
-                    fetch('https://cosmo-click.vercel.app/buy-drone', {
+                    fetch('http://localhost:3001/buy-drone', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ userId, droneId: drone.id, cost: drone.cost }),
@@ -382,22 +418,22 @@ function App() {
               <button
                 key={cargo.level}
                 className={`shop-button neon-border ${cargoLevel >= cargo.level ? 'purchased' : ''}`}
-                disabled={cs < cargo.cost || cargoLevel > cargo.level || cargo.level === 1}
+                disabled={cs < cargo.cost || cargoLevel > cargo.level}
                 onClick={() => {
-                  fetch('https://cosmo-click.vercel.app/upgrade-cargo', {
+                  fetch('http://localhost:3001/upgrade-cargo', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId, level: cargo.level + 1, cost: cargo.cost }),
+                    body: JSON.stringify({ userId, level: cargo.level, cost: cargo.cost }),
                   })
                     .then(res => res.json())
                     .then(() => {
                       setCs((prev) => prev - cargo.cost);
-                      setCargoLevel(cargo.level + 1);
+                      setCargoLevel(cargo.level);
                     })
                     .catch(err => console.error('Error upgrading cargo:', err));
                 }}
               >
-                Уровень {cargo.level} ({cargo.capacity} CCC) - {cargo.cost === 0 ? "Бесплатно" : `${cargo.cost} CS`}
+                Уровень {cargo.level} {cargo.autoCollect ? "(Авто)" : `(${cargo.capacity} CCC)`} - {cargo.cost === 0 ? "Бесплатно" : `${cargo.cost} CS`}
               </button>
             ))}
           </div>
@@ -412,7 +448,7 @@ function App() {
                 className={`task-button neon-border ${completed ? 'completed' : ''}`}
                 disabled={completed}
                 onClick={() => {
-                  fetch('https://cosmo-click.vercel.app/complete-task', {
+                  fetch('http://localhost:3001/complete-task', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId, taskId: index + 1 }),
@@ -435,15 +471,46 @@ function App() {
           </div>
         );
       case "action-exchange":
+        const cccToCsRate = 100;
+        const csToCccRate = 50;
+        const cccToCsResult = (parseFloat(cccToCsAmount) || 0) / cccToCsRate;
+        const csToCccResult = (parseFloat(csToCccAmount) || 0) * csToCccRate;
+        const canExchangeCccToCs = parseFloat(cccToCsAmount) > 0 && parseFloat(cccToCsAmount) <= ccc;
+        const canExchangeCsToCcc = parseFloat(csToCccAmount) > 0 && parseFloat(csToCccAmount) <= cs;
+
         return (
           <div className="tab-content exchange">
             <h2>Обмен</h2>
-            <div className="exchange-buttons">
+            <div className="exchange-section">
+              <h3>Обмен CCC на CS</h3>
+              <div className="balance-info">
+                Доступно: {Math.floor(ccc * 100) / 100} CCC
+              </div>
+              <div className="exchange-input">
+                <input
+                  type="number"
+                  value={cccToCsAmount}
+                  onChange={(e) => setCccToCsAmount(e.target.value)}
+                  placeholder="Введите сумму CCC"
+                  min="0"
+                  step="0.01"
+                />
+                <button
+                  className="max-button neon-border"
+                  onClick={() => setCccToCsAmount(ccc.toString())}
+                >
+                  Максимум
+                </button>
+              </div>
+              <div className="exchange-result">
+                Вы получите: {cccToCsResult.toFixed(2)} CS
+              </div>
               <button
                 className="exchange-button neon-border"
+                disabled={!canExchangeCccToCs}
                 onClick={() => {
-                  const amountCCC = 100;
-                  fetch('https://cosmo-click.vercel.app/exchange-ccc-to-cs', {
+                  const amountCCC = parseFloat(cccToCsAmount);
+                  fetch('http://localhost:3001/exchange-ccc-to-cs', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId, amountCCC }),
@@ -459,6 +526,7 @@ function App() {
                           amount_to: data.amountCS,
                           timestamp: new Date().toISOString(),
                         }, ...prev]);
+                        setCccToCsAmount('');
                       } else {
                         alert(data.error);
                       }
@@ -466,13 +534,40 @@ function App() {
                     .catch(err => console.error('Error exchanging CCC to CS:', err));
                 }}
               >
-                Обменять 100 CCC на 1 CS
+                Обменять
               </button>
+            </div>
+
+            <div className="exchange-section">
+              <h3>Обмен CS на CCC</h3>
+              <div className="balance-info">
+                Доступно: {Math.floor(cs * 100) / 100} CS
+              </div>
+              <div className="exchange-input">
+                <input
+                  type="number"
+                  value={csToCccAmount}
+                  onChange={(e) => setCsToCccAmount(e.target.value)}
+                  placeholder="Введите сумму CS"
+                  min="0"
+                  step="0.01"
+                />
+                <button
+                  className="max-button neon-border"
+                  onClick={() => setCsToCccAmount(cs.toString())}
+                >
+                  Максимум
+                </button>
+              </div>
+              <div className="exchange-result">
+                Вы получите: {csToCccResult.toFixed(2)} CCC
+              </div>
               <button
                 className="exchange-button neon-border"
+                disabled={!canExchangeCsToCcc}
                 onClick={() => {
-                  const amountCS = 1;
-                  fetch('https://cosmo-click.vercel.app/exchange-cs-to-ccc', {
+                  const amountCS = parseFloat(csToCccAmount);
+                  fetch('http://localhost:3001/exchange-cs-to-ccc', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId, amountCS }),
@@ -488,6 +583,7 @@ function App() {
                           amount_to: data.amountCCC,
                           timestamp: new Date().toISOString(),
                         }, ...prev]);
+                        setCsToCccAmount('');
                       } else {
                         alert(data.error);
                       }
@@ -495,9 +591,10 @@ function App() {
                     .catch(err => console.error('Error exchanging CS to CCC:', err));
                 }}
               >
-                Обменять 1 CS на 50 CCC
+                Обменять
               </button>
             </div>
+
             <h3>История обменов</h3>
             <div className="exchange-history">
               {exchanges.length === 0 ? (
