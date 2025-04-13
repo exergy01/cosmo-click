@@ -560,3 +560,347 @@ body, html, #root, .App {
   font-size: 14px;
   color: var(--neon-cyan);
 }
+
+.game-selection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 20px;
+  flex-grow: 1;
+  z-index: 10;
+}
+
+.game-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 300px;
+}
+
+.space-tapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+}
+
+.resource-info {
+  text-align: center;
+  font-size: 16px;
+  color: var(--neon-cyan);
+}
+
+.resource-info p {
+  margin: 5px 0;
+}
+
+.asteroid-image {
+  width: 200px;
+  height: auto;
+  cursor: pointer;
+  filter: drop-shadow(0 0 10px var(--neon-cyan));
+}
+
+.asteroid-image:hover {
+  transform: scale(1.05);
+}
+
+.claim-button {
+  padding: 10px 20px;
+  font-size: 16px;
+  background: var(--dark-bg);
+  border: 2px solid var(--neon-cyan);
+  border-radius: 10px;
+  box-shadow: var(--shadow-light);
+  color: var(--neon-cyan);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.claim-button:hover:not(:disabled) {
+  background: var(--darker-bg);
+  box-shadow: var(--shadow-glow);
+}
+
+.claim-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.space-thimbles {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+}
+
+.bet-section {
+  width: 100%;
+  max-width: 300px;
+  text-align: center;
+}
+
+.bet-input {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.bet-input label {
+  font-size: 16px;
+  color: var(--neon-cyan);
+}
+
+.bet-input input {
+  padding: 8px;
+  font-size: 16px;
+  border: 1px solid var(--neon-cyan);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.7);
+  color: var(--neon-cyan);
+  width: 100px;
+}
+
+.bet-input input:focus {
+  outline: none;
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 5px var(--neon-cyan);
+}
+
+.game-table {
+  margin-top: 20px;
+}
+
+.ufo-container {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.ufo-wrapper {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  transition: transform 0.3s ease;
+}
+
+.ufo-wrapper.shuffling {
+  animation: shuffle 0.3s infinite;
+}
+
+.ufo-image,
+.galaxy-image,
+.black-hole-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 5px var(--neon-cyan));
+}
+
+.win-border {
+  border: 2px solid #00ff00;
+  box-shadow: 0 0 10px #00ff00;
+}
+
+.lose-border {
+  border: 2px solid #ff0000;
+  box-shadow: 0 0 10px #ff0000;
+}
+
+.win-effect {
+  animation: winAnimation 1s ease;
+}
+
+.lose-effect {
+  animation: loseAnimation 1s ease;
+}
+
+.shuffle-button {
+  margin-top: 20px;
+  padding: 10px 20px;
+  font-size: 16px;
+  background: var(--dark-bg);
+  border: 2px solid var(--neon-cyan);
+  border-radius: 10px;
+  box-shadow: var(--shadow-light);
+  color: var(--neon-cyan);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.shuffle-button:hover:not(:disabled) {
+  background: var(--darker-bg);
+  box-shadow: var(--shadow-glow);
+}
+
+.shuffle-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.result-text {
+  margin-top: 20px;
+  text-align: center;
+  color: var(--neon-cyan);
+}
+
+.result-text p {
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+
+.game-history {
+  margin-top: 20px;
+  width: 100%;
+  max-width: 300px;
+}
+
+.game-history h3 {
+  font-size: 20px;
+  color: var(--neon-cyan);
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.game-history-item {
+  padding: 10px;
+  font-size: 14px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--neon-cyan);
+  border-radius: 5px;
+  margin-bottom: 5px;
+  text-align: center;
+  color: var(--neon-cyan);
+}
+
+@keyframes shuffle {
+  0% { transform: translateX(0); }
+  50% { transform: translateX(10px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes winAnimation {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes loseAnimation {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.color-guess {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+}
+
+.game-field {
+  display: flex;
+  gap: 10px;
+}
+
+.color-field {
+  width: 80px;
+  height: 80px;
+  border: 2px solid var(--neon-cyan);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.color-field:hover {
+  transform: scale(1.05);
+}
+
+.color-field.gray {
+  background: gray;
+}
+
+.color-field.red {
+  background: red;
+}
+
+.color-field.yellow {
+  background: yellow;
+}
+
+.color-field.green {
+  background: green;
+}
+
+.task-text {
+  font-size: 18px;
+  color: var(--neon-cyan);
+}
+
+.bet-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bet-input input {
+  padding: 8px;
+  font-size: 16px;
+  border: 1px solid var(--neon-cyan);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.7);
+  color: var(--neon-cyan);
+  width: 120px;
+}
+
+.bet-input input:focus {
+  outline: none;
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 5px var(--neon-cyan);
+}
+
+.quick-bet-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.quick-bet-button {
+  padding: 8px 12px;
+  font-size: 14px;
+  background: var(--dark-bg);
+  border: 2px solid var(--neon-cyan);
+  border-radius: 5px;
+  color: var(--neon-cyan);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.quick-bet-button:hover {
+  background: var(--darker-bg);
+  box-shadow: var(--shadow-glow);
+}
+
+.navigation-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-size: 24px;
+  color: var(--neon-cyan);
+}
