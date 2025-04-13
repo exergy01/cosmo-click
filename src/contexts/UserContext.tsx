@@ -1,111 +1,83 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-interface TelegramWebApp {
-  ready: () => void;
-  initDataUnsafe: {
-    user?: {
-      id: number;
-      first_name?: string;
-      last_name?: string;
-      username?: string;
-      language_code?: string;
-    };
-  };
-}
-
-interface Telegram {
-  WebApp: TelegramWebApp;
-}
-
-declare global {
-  interface Window {
-    Telegram: Telegram;
-  }
+interface Exchange {
+  type: 'CCC_TO_CS' | 'CS_TO_CCC';
+  amount_from: number;
+  amount_to: number;
+  timestamp: string;
 }
 
 interface UserData {
   userId: number | null;
   ccc: number;
   cs: number;
-  tasks: boolean[];
-  drones: number[];
-  asteroids: number[];
-  cargoLevel: number;
-  cargoCCC: number;
+  energy: number;
   asteroidResources: number;
+  cargoCCC: number;
+  cargoLevel: number;
+  asteroids: number[];
+  drones: number[];
+  tasks: boolean[];
 }
 
 interface UserContextType {
   userData: UserData;
   setUserData: React.Dispatch<React.SetStateAction<UserData>>;
-  exchanges: any[];
-  setExchanges: React.Dispatch<React.SetStateAction<any[]>>;
+  exchanges: Exchange[];
+  setExchanges: React.Dispatch<React.SetStateAction<Exchange[]>>;
   isLoading: boolean;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [userData, setUserData] = useState<UserData>({
     userId: null,
     ccc: 0,
     cs: 0,
-    tasks: Array(15).fill(false),
-    drones: [],
-    asteroids: [],
-    cargoLevel: 1,
-    cargoCCC: 0,
+    energy: 100,
     asteroidResources: 0,
+    cargoCCC: 0,
+    cargoLevel: 1,
+    asteroids: [],
+    drones: [],
+    tasks: Array(10).fill(false),
   });
-  const [exchanges, setExchanges] = useState<any[]>([]);
+  const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    let userId: number | null = null;
-
-    if (window.Telegram && window.Telegram.WebApp) {
-      window.Telegram.WebApp.ready();
-      const telegramUser = window.Telegram.WebApp.initDataUnsafe?.user;
-      if (telegramUser && telegramUser.id) {
-        userId = telegramUser.id;
-      } else {
-        console.error('Не удалось получить userId из Telegram');
-        userId = 1; // Fallback для тестов
-      }
-    } else {
-      console.warn('Telegram Web App API недоступен, использую userId = 1');
-      userId = 1; // Fallback для локальной разработки
-    }
-
-    setUserData((prev) => ({ ...prev, userId }));
-
-    if (userId !== null) {
-      fetch(`http://localhost:3001/user/${userId}`)
-        .then((res) => res.json())
-        .then((data) => {
-          setUserData({
-            userId,
-            ccc: data.ccc || 0,
-            cs: data.cs || 0,
-            tasks: Array.isArray(data.tasks) && data.tasks.length === 15 ? data.tasks : Array(15).fill(false),
-            drones: Array.isArray(data.drones) ? data.drones : [],
-            asteroids: Array.isArray(data.asteroids) ? data.asteroids : [],
-            cargoLevel: data.cargoLevel || 1,
-            cargoCCC: data.cargoCCC || 0,
-            asteroidResources: data.asteroidResources || 0,
-          });
-          setIsLoading(false);
-        })
-        .catch((err) => {
-          console.error('Error loading user data:', err);
-          setIsLoading(false);
+    fetch('http://localhost:3001/user/1')
+      .then((res) => res.json())
+      .then((data) => {
+        setUserData({
+          userId: data.id,
+          ccc: data.ccc,
+          cs: data.cs,
+          energy: data.energy || 100,
+          asteroidResources: data.asteroidResources,
+          cargoCCC: data.cargoCCC,
+          cargoLevel: data.cargoLevel,
+          asteroids: data.asteroids ? JSON.parse(data.asteroids) : [],
+          drones: data.drones ? JSON.parse(data.drones) : [],
+          tasks: data.tasks ? JSON.parse(data.tasks) : Array(10).fill(false),
         });
 
-      fetch(`http://localhost:3001/exchanges/${userId}`)
-        .then((res) => res.json())
-        .then((data) => setExchanges(data))
-        .catch((err) => console.error('Error loading exchanges:', err));
-    }
+        fetch('http://localhost:3001/exchange-history/1')
+          .then((res) => res.json())
+          .then((exchangeData) => {
+            setExchanges(exchangeData);
+            setIsLoading(false);
+          })
+          .catch((err) => {
+            console.error('Error fetching exchange history:', err);
+            setIsLoading(false);
+          });
+      })
+      .catch((err) => {
+        console.error('Error fetching user data:', err);
+        setIsLoading(false);
+      });
   }, []);
 
   return (

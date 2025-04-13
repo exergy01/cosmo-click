@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useUser } from '../../contexts/UserContext';
+import React, { useState } from 'react';
+import { useUser } from '../../contexts/UserContext'; // Убрали .tsx
 
 const SpaceTapper: React.FC = () => {
   const { userData, setUserData } = useUser();

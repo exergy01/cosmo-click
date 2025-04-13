@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useUser } from '../../contexts/UserContext';
+import { useUser } from '../../contexts/UserContext'; // Убрали .tsx
 
 const ColorGuess: React.FC = () => {
   const { userData, setUserData } = useUser();

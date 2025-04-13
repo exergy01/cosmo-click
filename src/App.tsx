@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import galaxyBackground from './images/galaxy_background.jpg';
-import { useUser } from './contexts/UserContext';
-import { useGame } from './contexts/GameContext';
-import ColorGuess from './components/games/ColorGuess';
-import SpaceTapper from './components/games/SpaceTapper';
-import SpaceThimbles from './components/games/SpaceThimbles';
+import { useUser } from './contexts/UserContext'; // Убрали .tsx
+import { useGame } from './contexts/GameContext'; // Убрали .tsx
+import ColorGuess from './components/games/ColorGuess'; // Убрали .tsx
+import SpaceTapper from './components/games/SpaceTapper'; // Убрали .tsx
+import SpaceThimbles from './components/games/SpaceThimbles'; // Убрали .tsx
 
 function App() {
   const { userData, setUserData, exchanges, setExchanges, isLoading } = useUser();
