@@ -13,6 +13,7 @@ function App() {
   const [isPortrait, setIsPortrait] = useState(window.matchMedia("(orientation: portrait)").matches);
   const [cccToCsAmount, setCccToCsAmount] = useState('');
   const [csToCccAmount, setCsToCccAmount] = useState('');
+  const BACKEND_URL = 'https://cosmo-click-backend.onrender.com';
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(orientation: portrait)");
