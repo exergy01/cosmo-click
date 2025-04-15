@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import galaxyBackground from './images/galaxy_background.jpg';
-import { useUser } from './contexts/UserContext'; // Убрали .tsx
-import { useGame } from './contexts/GameContext'; // Убрали .tsx
-import ColorGuess from './components/games/ColorGuess'; // Убрали .tsx
-import SpaceTapper from './components/games/SpaceTapper'; // Убрали .tsx
-import SpaceThimbles from './components/games/SpaceThimbles'; // Убрали .tsx
+import { useUser } from './contexts/UserContext';
+import { useGame } from './contexts/GameContext';
+import ColorGuess from './components/games/ColorGuess';
+import SpaceTapper from './components/games/SpaceTapper';
+import SpaceThimbles from './components/games/SpaceThimbles';
 
 function App() {
   const { userData, setUserData, exchanges, setExchanges, isLoading } = useUser();
@@ -47,7 +47,7 @@ function App() {
           }));
 
           if (userData.userId !== null) {
-            fetch('http://localhost:3001/collect-ccc', {
+            fetch(`${BACKEND_URL}/collect-ccc`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ userId: userData.userId, amount: amountToCollect }),
@@ -65,7 +65,7 @@ function App() {
         }));
 
         if (userData.userId !== null) {
-          fetch('http://localhost:3001/update-resources', {
+          fetch(`${BACKEND_URL}/update-resources`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -205,7 +205,7 @@ function App() {
             className={`seif-image ${userData.cargoCCC >= 1 && !isAutoCollect() ? 'clickable' : ''}`}
             onClick={() => {
               if (userData.cargoCCC >= 1 && !isAutoCollect() && userData.userId !== null) {
-                fetch('http://localhost:3001/collect-ccc', {
+                fetch(`${BACKEND_URL}/collect-ccc`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ userId: userData.userId, amount: userData.cargoCCC }),
@@ -258,7 +258,7 @@ function App() {
     </div>
   );
 
-  const TabContent = ({ tabId }: { tabId: string }) => {
+  const TabContent = ({ tabId }) => {
     switch (tabId) {
       case "main-resources":
         return (
@@ -277,7 +277,7 @@ function App() {
                   }
                   onClick={() => {
                     if (userData.userId !== null) {
-                      fetch('http://localhost:3001/buy-asteroid', {
+                      fetch(`${BACKEND_URL}/buy-asteroid`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -323,7 +323,7 @@ function App() {
                 }
                 onClick={() => {
                   if (userData.userId !== null) {
-                    fetch('http://localhost:3001/buy-asteroid', {
+                    fetch(`${BACKEND_URL}/buy-asteroid`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
@@ -347,12 +347,12 @@ function App() {
                         }));
                       })
                       .catch((err) => console.error('Error buying asteroid:', err));
-                  }
-                }}
-              >
-                Астероид №{asteroid.id} ({asteroid.resources} CCC) - {asteroid.cost} CS
-              </button>
-            ))}
+                    }
+                  }}
+                >
+                  Астероид №{asteroid.id} ({asteroid.resources} CCC) - {asteroid.cost} CS
+                </button>
+              ))}
           </div>
         );
       case "main-drones":
@@ -372,7 +372,7 @@ function App() {
                   }
                   onClick={() => {
                     if (userData.userId !== null) {
-                      fetch('http://localhost:3001/buy-drone', {
+                      fetch(`${BACKEND_URL}/buy-drone`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -415,7 +415,7 @@ function App() {
                 disabled={userData.cs < cargo.cost || userData.cargoLevel > cargo.level}
                 onClick={() => {
                   if (userData.userId !== null) {
-                    fetch('http://localhost:3001/upgrade-cargo', {
+                    fetch(`${BACKEND_URL}/upgrade-cargo`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
@@ -453,7 +453,7 @@ function App() {
                 disabled={completed}
                 onClick={() => {
                   if (userData.userId !== null) {
-                    fetch('http://localhost:3001/complete-task', {
+                    fetch(`${BACKEND_URL}/complete-task`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ userId: userData.userId, taskId: index + 1 }),
@@ -512,7 +512,7 @@ function App() {
                 onClick={() => {
                   const amountCCC = parseFloat(cccToCsAmount);
                   if (userData.userId !== null) {
-                    fetch('http://localhost:3001/exchange-ccc-to-cs', {
+                    fetch(`${BACKEND_URL}/exchange-ccc-to-cs`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ userId: userData.userId, amountCCC }),
@@ -573,7 +573,7 @@ function App() {
                 onClick={() => {
                   const amountCS = parseFloat(csToCccAmount);
                   if (userData.userId !== null) {
-                    fetch('http://localhost:3001/exchange-cs-to-ccc', {
+                    fetch(`${BACKEND_URL}/exchange-cs-to-ccc`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ userId: userData.userId, amountCS }),
