@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: cosmo-click-backend
+    env: node
+    branch: main
+    buildCommand: npm install
+    startCommand: npm start
+    preDeployCommand: apt-get update && apt-get install -y build-essential python3
+    envVars:
+      - key: PORT
+        value: 3001
