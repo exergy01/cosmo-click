@@ -47,7 +47,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetch('http://localhost:3001/user/1')
+    fetch('https://cosmo-click-backend.onrender.com/user/1')
       .then((res) => res.json())
       .then((data) => {
         setUserData({
@@ -63,7 +63,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           tasks: data.tasks ? JSON.parse(data.tasks) : Array(10).fill(false),
         });
 
-        fetch('http://localhost:3001/exchange-history/1')
+        fetch('https://cosmo-click-backend.onrender.com/exchange-history/1')
           .then((res) => res.json())
           .then((exchangeData) => {
             setExchanges(exchangeData);
