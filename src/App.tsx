@@ -24,26 +24,26 @@ function App() {
 
   // Логика добычи CCC дронами и автоматического сбора
   useEffect(() => {
-    if (userData.drones.length > 0 && userData.asteroids.length > 0 && userData.asteroidResources > 0) {
+    if (userData.drones.length > 0 && userData.asteroids.length > 0 && userData.asteroidresources > 0) {
       const interval = setInterval(() => {
         const totalIncomePerDay = userData.drones.reduce((sum, droneId) => sum + droneData[droneId - 1].income, 0);
         const incomePerSecond = totalIncomePerDay / 86400;
-        let newCargoCCC = userData.cargoCCC + incomePerSecond;
-        let newAsteroidResources = Math.max(userData.asteroidResources - incomePerSecond, 0);
+        let newCargoCCC = userData.cargoccc + incomePerSecond;
+        let newAsteroidResources = Math.max(userData.asteroidresources - incomePerSecond, 0);
 
-        console.log(`Добыча CCC: cargoLevel=${userData.cargoLevel}, newCargoCCC=${newCargoCCC}`);
+        console.log(`Добыча CCC: cargolevel=${userData.cargolevel}, newCargoCCC=${newCargoCCC}`);
 
         // Автоматический сбор на 5 уровне
-        if (userData.cargoLevel === 5 && newCargoCCC >= 100) {
-          console.log(`Автоматический сбор срабатывает: cargoCCC=${newCargoCCC}`);
+        if (userData.cargolevel === 5 && newCargoCCC >= 100) {
+          console.log(`Автоматический сбор срабатывает: cargoccc=${newCargoCCC}`);
           const amountToCollect = Math.floor(newCargoCCC / 100) * 100;
           newCargoCCC -= amountToCollect;
 
           setUserData((prev) => ({
             ...prev,
             ccc: prev.ccc + amountToCollect,
-            cargoCCC: newCargoCCC,
-            asteroidResources: newAsteroidResources,
+            cargoccc: newCargoCCC,
+            asteroidresources: newAsteroidResources,
           }));
 
           if (userData.userId !== null) {
@@ -53,15 +53,15 @@ function App() {
               body: JSON.stringify({ userId: userData.userId, amount: amountToCollect }),
             }).catch((err) => console.error('Error collecting CCC:', err));
           }
-        } else if (userData.cargoLevel !== 5) {
+        } else if (userData.cargolevel !== 5) {
           // Для уровней 1-4 ограничиваем вместимостью
           newCargoCCC = Math.min(newCargoCCC, getCargoCapacity());
         }
 
         setUserData((prev) => ({
           ...prev,
-          cargoCCC: newCargoCCC,
-          asteroidResources: newAsteroidResources,
+          cargoccc: newCargoCCC,
+          asteroidresources: newAsteroidResources,
         }));
 
         if (userData.userId !== null) {
@@ -70,15 +70,15 @@ function App() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               userId: userData.userId,
-              cargoCCC: newCargoCCC,
-              asteroidResources: newAsteroidResources,
+              cargoccc: newCargoCCC,
+              asteroidresources: newAsteroidResources,
             }),
           }).catch((err) => console.error('Error updating resources:', err));
         }
       }, 1000);
       return () => clearInterval(interval);
     }
-  }, [userData.drones, userData.asteroids, userData.cargoCCC, userData.asteroidResources, userData.userId, userData.cargoLevel]);
+  }, [userData.drones, userData.asteroids, userData.cargoccc, userData.asteroidresources, userData.userId, userData.cargolevel]);
 
   if (!isPortrait) {
     return (
@@ -131,12 +131,12 @@ function App() {
   ];
 
   const getCargoCapacity = () => {
-    const cargo = cargoData[userData.cargoLevel - 1];
+    const cargo = cargoData[userData.cargolevel - 1];
     return cargo ? cargo.capacity : Infinity;
   };
 
   const isAutoCollect = () => {
-    const cargo = cargoData[userData.cargoLevel - 1];
+    const cargo = cargoData[userData.cargolevel - 1];
     return cargo ? !!cargo.autoCollect : false;
   };
 
@@ -202,24 +202,24 @@ function App() {
           <img
             src={`${process.env.PUBLIC_URL}/images/seif.png`}
             alt="Сейф"
-            className={`seif-image ${userData.cargoCCC >= 1 && !isAutoCollect() ? 'clickable' : ''}`}
+            className={`seif-image ${userData.cargoccc >= 1 && !isAutoCollect() ? 'clickable' : ''}`}
             onClick={() => {
-              if (userData.cargoCCC >= 1 && !isAutoCollect() && userData.userId !== null) {
+              if (userData.cargoccc >= 1 && !isAutoCollect() && userData.userId !== null) {
                 fetch(`${BACKEND_URL}/collect-ccc`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ userId: userData.userId, amount: userData.cargoCCC }),
+                  body: JSON.stringify({ userId: userData.userId, amount: userData.cargoccc }),
                 })
                   .then((res) => res.json())
                   .then(() => {
                     setUserData((prev) => ({
                       ...prev,
-                      ccc: prev.ccc + prev.cargoCCC,
-                      cargoCCC: 0,
+                      ccc: prev.ccc + prev.cargoccc,
+                      cargoccc: 0,
                     }));
                     setGameData((prev) => ({
                       ...prev,
-                      displayedResources: Math.floor(userData.asteroidResources),
+                      displayedResources: Math.floor(userData.asteroidresources),
                     }));
                   })
                   .catch((err) => console.error('Error collecting CCC:', err));
@@ -227,7 +227,7 @@ function App() {
             }}
           />
         </div>
-        <div className="cargo-counter">{(userData.cargoCCC || 0).toFixed(4)}</div>
+        <div className="cargo-counter">{(userData.cargoccc || 0).toFixed(4)}</div>
       </div>
       <div className="action-menu">
         {actionMenuItems.map((item) => (
@@ -293,11 +293,11 @@ function App() {
                             ...prev,
                             cs: prev.cs - asteroid.cost,
                             asteroids: [...prev.asteroids, asteroid.id],
-                            asteroidResources: prev.asteroidResources + asteroid.resources,
+                            asteroidresources: prev.asteroidresources + asteroid.resources,
                           }));
                           setGameData((prev) => ({
                             ...prev,
-                            displayedResources: Math.floor(userData.asteroidResources + asteroid.resources),
+                            displayedResources: Math.floor(userData.asteroidresources + asteroid.resources),
                           }));
                         })
                         .catch((err) => console.error('Error buying asteroid:', err));
@@ -339,11 +339,11 @@ function App() {
                           ...prev,
                           cs: prev.cs - asteroid.cost,
                           asteroids: [...prev.asteroids, asteroid.id],
-                          asteroidResources: prev.asteroidResources + asteroid.resources,
+                          asteroidresources: prev.asteroidresources + asteroid.resources,
                         }));
                         setGameData((prev) => ({
                           ...prev,
-                          displayedResources: Math.floor(userData.asteroidResources + asteroid.resources),
+                          displayedResources: Math.floor(userData.asteroidresources + asteroid.resources),
                         }));
                       })
                       .catch((err) => console.error('Error buying asteroid:', err));
@@ -411,8 +411,8 @@ function App() {
             {cargoData.map((cargo) => (
               <button
                 key={cargo.level}
-                className={`shop-button neon-border ${userData.cargoLevel >= cargo.level ? 'purchased' : ''}`}
-                disabled={userData.cs < cargo.cost || userData.cargoLevel > cargo.level}
+                className={`shop-button neon-border ${userData.cargolevel >= cargo.level ? 'purchased' : ''}`}
+                disabled={userData.cs < cargo.cost || userData.cargolevel > cargo.level}
                 onClick={() => {
                   if (userData.userId !== null) {
                     fetch(`${BACKEND_URL}/upgrade-cargo`, {
@@ -429,7 +429,7 @@ function App() {
                         setUserData((prev) => ({
                           ...prev,
                           cs: prev.cs - cargo.cost,
-                          cargoLevel: cargo.level,
+                          cargolevel: cargo.level,
                         }));
                       })
                       .catch((err) => console.error('Error upgrading cargo:', err));

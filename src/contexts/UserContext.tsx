@@ -12,9 +12,9 @@ interface UserData {
   ccc: number;
   cs: number;
   energy: number;
-  asteroidResources: number;
-  cargoCCC: number;
-  cargoLevel: number;
+  asteroidresources: number;
+  cargoccc: number;
+  cargolevel: number;
   asteroids: number[];
   drones: number[];
   tasks: boolean[];
@@ -37,9 +37,9 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     ccc: 0,
     cs: 0,
     energy: 100,
-    asteroidResources: 0,
-    cargoCCC: 0,
-    cargoLevel: 1,
+    asteroidresources: 0,
+    cargoccc: 0,
+    cargolevel: 1,
     asteroids: [],
     drones: [],
     tasks: Array(10).fill(false),
@@ -55,14 +55,15 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return res.json();
       })
       .then((data) => {
+        console.log('User data fetched:', data);
         setUserData({
           userId: data.id,
           ccc: data.ccc || 0,
           cs: data.cs || 0,
           energy: data.energy || 100,
-          asteroidResources: data.asteroidResources || 0,
-          cargoCCC: data.cargoCCC || 0,
-          cargoLevel: data.cargoLevel || 1,
+          asteroidresources: data.asteroidresources || 0,
+          cargoccc: data.cargoccc || 0,
+          cargolevel: data.cargolevel || 1,
           asteroids: data.asteroids ? JSON.parse(data.asteroids) : [],
           drones: data.drones ? JSON.parse(data.drones) : [],
           tasks: data.tasks ? JSON.parse(data.tasks) : Array(10).fill(false),
@@ -74,6 +75,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return res.json();
           })
           .then((exchangeData) => {
+            console.log('Exchange history fetched:', exchangeData);
             setExchanges(exchangeData);
             setIsLoading(false);
           })
