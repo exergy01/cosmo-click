@@ -8,7 +8,7 @@ import SpaceTapper from './components/games/SpaceTapper';
 import SpaceThimbles from './components/games/SpaceThimbles';
 
 function App() {
-  const { userData, setUserData, exchanges, setExchanges, isLoading } = useUser();
+  const { userData, setUserData, exchanges, setExchanges, isLoading, error } = useUser();
   const { gameData, setGameData } = useGame();
   const [isPortrait, setIsPortrait] = useState(window.matchMedia("(orientation: portrait)").matches);
   const [cccToCsAmount, setCccToCsAmount] = useState('');
@@ -227,7 +227,7 @@ function App() {
             }}
           />
         </div>
-        <div className="cargo-counter">{userData.cargoCCC.toFixed(4)}</div>
+        <div className="cargo-counter">{(userData.cargoCCC || 0).toFixed(4)}</div>
       </div>
       <div className="action-menu">
         {actionMenuItems.map((item) => (
@@ -680,6 +680,10 @@ function App() {
 
   if (isLoading) {
     return <div className="loading">Загрузка...</div>;
+  }
+
+  if (error) {
+    return <div className="error">Ошибка: {error}</div>;
   }
 
   return (
