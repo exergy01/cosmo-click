@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
-import galaxyBackground from './images/galaxy_background.jpg';
+import cosmoBackground from './images/cosmo-bg.png'; // Обновили фон на cosmo-bg.png
 import { useUser } from './contexts/UserContext';
 import { useGame } from './contexts/GameContext';
 import ColorGuess from './components/games/ColorGuess';
@@ -272,7 +272,6 @@ function App() {
         ⭐ Звёздная система: Андромеда I
       </div>
       <div className="images-block">
-        <img src={`${process.env.PUBLIC_URL}/images/space_bot_1.png`} alt="Дрон" className="drone-image" />
         <div className="seif-container">
           <img
             src={`${process.env.PUBLIC_URL}/images/seif.png`}
@@ -770,19 +769,19 @@ function App() {
   return (
     <div
       className="App"
-      style={{ backgroundImage: `url(${galaxyBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+      style={{ backgroundImage: `url(${cosmoBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
     >
       <TopBar />
       {renderContent()}
       <div className="bottom-menu">
         {bottomMenuItems.map((item) => (
-          <button
+          <div
             key={item.id}
             className={`neon-icon-button ${gameData.activeTab === item.id ? 'active' : ''}`}
             onClick={() => setGameData((prev) => ({ ...prev, activeTab: item.id }))}
           >
             {item.icon}
-          </button>
+          </div>
         ))}
       </div>
     </div>
