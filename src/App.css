@@ -904,3 +904,11 @@ body, html, #root, .App {
   font-size: 24px;
   color: var(--neon-cyan);
 }
+
+.welcome-message {
+  text-align: center;
+  color: #00ff00; /* Неоново-зелёный цвет */
+  font-size: 14px;
+  margin-bottom: 10px;
+  text-shadow: 0 0 5px #00ff00, 0 0 10px #00ff00;
+}

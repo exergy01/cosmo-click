@@ -8,7 +8,7 @@ import SpaceTapper from './components/games/SpaceTapper';
 import SpaceThimbles from './components/games/SpaceThimbles';
 
 function App() {
-  const { userData, setUserData, exchanges, setExchanges, isLoading, error } = useUser();
+  const { userData, setUserData, exchanges, setExchanges, isLoading, error, telegramId } = useUser();
   const { gameData, setGameData } = useGame();
   const [isPortrait, setIsPortrait] = useState(window.matchMedia("(orientation: portrait)").matches);
   const [cccToCsAmount, setCccToCsAmount] = useState('');
@@ -63,8 +63,8 @@ function App() {
           asteroidresources: newAsteroidResources,
         }));
 
-        // Отправляем обновление раз в 5 секунд
-        if (userData.userId !== null && Date.now() - lastUpdate >= 5000) {
+        // Отправляем обновление раз в 2 секунды
+        if (userData.userId !== null && Date.now() - lastUpdate >= 2000) {
           lastUpdate = Date.now();
           fetch(`${BACKEND_URL}/update-resources`, {
             method: 'POST',
@@ -78,7 +78,6 @@ function App() {
         }
       }, 1000);
 
-      // Сохраняем данные перед обновлением или закрытием страницы
       const saveDataBeforeUnload = () => {
         if (userData.userId !== null) {
           fetch(`${BACKEND_URL}/update-resources`, {
@@ -89,7 +88,6 @@ function App() {
               cargoccc: userData.cargoccc,
               asteroidresources: userData.asteroidresources,
             }),
-            // Используем keepalive, чтобы запрос отправился даже при закрытии страницы
             keepalive: true,
           }).catch((err) => console.error('Error saving data before unload:', err));
         }
@@ -190,6 +188,10 @@ function App() {
 
     return (
       <div className="top-bar">
+        {/* Добавляем приветственное сообщение с telegramId */}
+        <div className="welcome-message">
+          Добро пожаловать! Ваш Telegram ID: {telegramId || 'Не указан'}
+        </div>
         <div className="currency neon-border">
           <span className="label">CCC:</span>
           <span className="value">{Math.floor(userData.ccc * 100) / 100}</span>

@@ -27,6 +27,7 @@ interface UserContextType {
   setExchanges: React.Dispatch<React.SetStateAction<Exchange[]>>;
   isLoading: boolean;
   error: string | null;
+  telegramId: string | null; // Добавляем telegramId в контекст
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -47,9 +48,15 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [telegramId, setTelegramId] = useState<string | null>(null); // Состояние для telegramId
 
   useEffect(() => {
-    fetch('https://cosmo-click-backend.onrender.com/user/1')
+    // Извлекаем telegramId из параметров URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const telegramIdFromUrl = urlParams.get('telegramId') || '1'; // Если telegramId нет, используем 1 (для тестов)
+    setTelegramId(telegramIdFromUrl); // Сохраняем telegramId в состояние
+
+    fetch(`https://cosmo-click-backend.onrender.com/user/${telegramIdFromUrl}`)
       .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch user data');
         return res.json();
@@ -69,7 +76,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           tasks: data.tasks ? JSON.parse(data.tasks) : Array(10).fill(false),
         });
 
-        fetch('https://cosmo-click-backend.onrender.com/exchange-history/1')
+        fetch(`https://cosmo-click-backend.onrender.com/exchange-history/${telegramIdFromUrl}`)
           .then((res) => {
             if (!res.ok) throw new Error('Failed to fetch exchange history');
             return res.json();
@@ -93,7 +100,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   return (
-    <UserContext.Provider value={{ userData, setUserData, exchanges, setExchanges, isLoading, error }}>
+    <UserContext.Provider value={{ userData, setUserData, exchanges, setExchanges, isLoading, error, telegramId }}>
       {children}
     </UserContext.Provider>
   );
