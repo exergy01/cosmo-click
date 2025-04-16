@@ -58,7 +58,8 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Если запущено через Telegram Web App, получаем telegramId из initDataUnsafe
       telegramIdFromUrl = window.Telegram.WebApp.initDataUnsafe.user.id.toString();
     } else {
-      // Пробуем извлечь telegramId из URL (запасной вариант)
+      // Запасной вариант: извлекаем telegramId из URL (для отладки)
+      // Пример: https://cosmo-click.vercel.app/?telegramId=DEBUG_ID
       const urlParams = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       telegramIdFromUrl = urlParams.get('telegramId') || hashParams.get('telegramId');
@@ -66,7 +67,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Проверяем, есть ли telegramId
     if (!telegramIdFromUrl) {
-      setError('Не указан Telegram ID. Пожалуйста, откройте приложение через Telegram-бот.');
+      setError('Не указан Telegram ID. Пожалуйста, откройте приложение через Telegram-бот или добавьте параметр telegramId в URL для отладки (например, ?telegramId=DEBUG_ID).');
       setIsLoading(false);
       return;
     }
