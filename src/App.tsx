@@ -25,15 +25,15 @@ function App() {
   // Логика добычи CCC дронами и автоматического сбора
   useEffect(() => {
     if (userData.drones.length > 0 && userData.asteroids.length > 0 && userData.asteroidresources > 0) {
+      let lastUpdate = Date.now();
       const interval = setInterval(() => {
         const totalIncomePerDay = userData.drones.reduce((sum, droneId) => sum + droneData[droneId - 1].income, 0);
         const incomePerSecond = totalIncomePerDay / 86400;
         let newCargoCCC = userData.cargoccc + incomePerSecond;
         let newAsteroidResources = Math.max(userData.asteroidresources - incomePerSecond, 0);
 
-        console.log(`Добыча CCC: cargolevel=${userData.cargolevel}, newCargoCCC=${newCargoCCC}`);
+        console.log(`Добыча CCC: cargolevel=${userData.cargolevel}, newCargoCCC=${newCargoCCC}, newAsteroidResources=${newAsteroidResources}, userId=${userData.userId}`);
 
-        // Автоматический сбор на 5 уровне
         if (userData.cargolevel === 5 && newCargoCCC >= 100) {
           console.log(`Автоматический сбор срабатывает: cargoccc=${newCargoCCC}`);
           const amountToCollect = Math.floor(newCargoCCC / 100) * 100;
@@ -54,7 +54,6 @@ function App() {
             }).catch((err) => console.error('Error collecting CCC:', err));
           }
         } else if (userData.cargolevel !== 5) {
-          // Для уровней 1-4 ограничиваем вместимостью
           newCargoCCC = Math.min(newCargoCCC, getCargoCapacity());
         }
 
@@ -64,7 +63,9 @@ function App() {
           asteroidresources: newAsteroidResources,
         }));
 
-        if (userData.userId !== null) {
+        // Отправляем обновление раз в 5 секунд
+        if (userData.userId !== null && Date.now() - lastUpdate >= 5000) {
+          lastUpdate = Date.now();
           fetch(`${BACKEND_URL}/update-resources`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -76,7 +77,30 @@ function App() {
           }).catch((err) => console.error('Error updating resources:', err));
         }
       }, 1000);
-      return () => clearInterval(interval);
+
+      // Сохраняем данные перед обновлением или закрытием страницы
+      const saveDataBeforeUnload = () => {
+        if (userData.userId !== null) {
+          fetch(`${BACKEND_URL}/update-resources`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: userData.userId,
+              cargoccc: userData.cargoccc,
+              asteroidresources: userData.asteroidresources,
+            }),
+            // Используем keepalive, чтобы запрос отправился даже при закрытии страницы
+            keepalive: true,
+          }).catch((err) => console.error('Error saving data before unload:', err));
+        }
+      };
+
+      window.addEventListener('beforeunload', saveDataBeforeUnload);
+
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('beforeunload', saveDataBeforeUnload);
+      };
     }
   }, [userData.drones, userData.asteroids, userData.cargoccc, userData.asteroidresources, userData.userId, userData.cargolevel]);
 
