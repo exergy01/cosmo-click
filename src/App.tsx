@@ -779,4 +779,14 @@ function App() {
           <button
             key={item.id}
             className={`neon-icon-button ${gameData.activeTab === item.id ? 'active' : ''}`}
-            onClick={() => setGameData((prev) => ({ ...prev, activeTab: item.id
+            onClick={() => setGameData((prev) => ({ ...prev, activeTab: item.id }))}
+          >
+            {item.icon}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default App;
