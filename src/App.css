@@ -150,9 +150,9 @@ body, html, #root, .App {
 }
 
 .seif-image {
-  width: 300px; /* Увеличиваем размер сейфа */
+  width: 390px; /* Увеличиваем размер сейфа на 30% (было 300px) */
   height: auto;
-  max-width: 50%; /* Адаптивный размер */
+  max-width: 65%; /* Увеличиваем на 30% (было 50%) */
   filter: drop-shadow(0 0 10px var(--neon-cyan)) drop-shadow(0 0 20px var(--neon-cyan));
   transition: transform 0.3s ease;
   position: relative;
@@ -172,7 +172,7 @@ body, html, #root, .App {
   left: 0;
   right: 0;
   display: flex;
-  flex-direction: column; /* Добавляем направление колонкой, чтобы счётчик был сверху */
+  flex-direction: column; /* Счётчик сверху, кнопки снизу */
   align-items: center; /* Центрируем содержимое */
   padding: 0 10px;
   gap: 6px;
@@ -197,9 +197,11 @@ body, html, #root, .App {
 
 .action-menu .buttons-row {
   display: flex;
+  flex-direction: row; /* Уточняем, что кнопки в ряду */
   justify-content: center;
   gap: 6px;
   width: 100%;
+  pointer-events: auto; /* Убедимся, что кнопки кликабельны */
 }
 
 .cargo-counter {
@@ -236,8 +238,8 @@ body, html, #root, .App {
     padding-bottom: 80px;
   }
   .seif-image {
-    width: 250px; /* Уменьшаем размер для меньших экранов */
-    max-width: 45%;
+    width: 325px; /* Увеличиваем на 30% (было 250px) */
+    max-width: 59%; /* Увеличиваем на 30% (было 45%) */
   }
   .cargo-counter {
     font-size: 28px;
@@ -253,8 +255,8 @@ body, html, #root, .App {
     padding-bottom: 70px;
   }
   .seif-image {
-    width: 200px; /* Ещё уменьшаем */
-    max-width: 40%;
+    width: 260px; /* Увеличиваем на 30% (было 200px) */
+    max-width: 52%; /* Увеличиваем на 30% (было 40%) */
   }
   .cargo-counter {
     font-size: 24px;
@@ -514,7 +516,7 @@ body, html, #root, .App {
   border: 1px solid var(--neon-cyan);
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.5);
-}
+});
 
 .balance-info {
   font-size: 14px;
