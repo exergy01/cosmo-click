@@ -27,7 +27,7 @@ interface UserContextType {
   setExchanges: React.Dispatch<React.SetStateAction<Exchange[]>>;
   isLoading: boolean;
   error: string | null;
-  telegramId: string | null; // Добавляем telegramId в контекст
+  telegramId: string | null;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -48,13 +48,30 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [telegramId, setTelegramId] = useState<string | null>(null); // Состояние для telegramId
+  const [telegramId, setTelegramId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Извлекаем telegramId из параметров URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const telegramIdFromUrl = urlParams.get('telegramId') || '1'; // Если telegramId нет, используем 1 (для тестов)
-    setTelegramId(telegramIdFromUrl); // Сохраняем telegramId в состояние
+    // Проверяем, запущено ли приложение через Telegram Web App
+    let telegramIdFromUrl: string | null = null;
+
+    if (window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
+      // Если запущено через Telegram Web App, получаем telegramId из initDataUnsafe
+      telegramIdFromUrl = window.Telegram.WebApp.initDataUnsafe.user.id.toString();
+    } else {
+      // Пробуем извлечь telegramId из URL (запасной вариант)
+      const urlParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      telegramIdFromUrl = urlParams.get('telegramId') || hashParams.get('telegramId');
+    }
+
+    // Проверяем, есть ли telegramId
+    if (!telegramIdFromUrl) {
+      setError('Не указан Telegram ID. Пожалуйста, откройте приложение через Telegram-бот.');
+      setIsLoading(false);
+      return;
+    }
+
+    setTelegramId(telegramIdFromUrl);
 
     fetch(`https://cosmo-click-backend.onrender.com/user/${telegramIdFromUrl}`)
       .then((res) => {
