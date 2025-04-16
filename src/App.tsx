@@ -307,9 +307,11 @@ function App() {
             }}
           />
         </div>
-        <div className="cargo-counter">{localCargoCCC.toFixed(4)}</div>
       </div>
       <div className="action-menu">
+        {localCargoCCC > 0 && (
+          <div className="cargo-counter">{localCargoCCC.toFixed(4)}</div>
+        )}
         {actionMenuItems.map((item) => (
           <div
             key={item.id}

@@ -150,13 +150,12 @@ body, html, #root, .App {
 }
 
 .seif-image {
-  width: 220px; /* Увеличиваем размер сейфа */
+  width: 300px; /* Увеличиваем размер сейфа */
   height: auto;
-  max-width: 40%; /* Адаптивный размер */
+  max-width: 50%; /* Адаптивный размер */
   filter: drop-shadow(0 0 10px var(--neon-cyan)) drop-shadow(0 0 20px var(--neon-cyan));
   transition: transform 0.3s ease;
   position: relative;
-  left: 0; /* Убираем смещение, так как выравниваем через margin */
 }
 
 .seif-image.clickable {
@@ -167,28 +166,17 @@ body, html, #root, .App {
   transform: scale(1.1);
 }
 
-.cargo-counter {
-  position: absolute;
-  bottom: 100px; /* Поднимаем счётчик выше action-menu */
-  left: 50%;
-  transform: translateX(-50%);
-  color: var(--neon-cyan);
-  font-size: 32px; /* Оставляем шрифт как в оригинале */
-  text-shadow: 0 0 5px var(--neon-cyan);
-  text-align: center;
-  z-index: 20; /* Устанавливаем z-index выше action-menu */
-}
-
 .action-menu {
   position: fixed;
   bottom: 80px;
   left: 0;
   right: 0;
   display: flex;
-  justify-content: center;
+  flex-direction: column; /* Добавляем направление колонкой, чтобы счётчик был сверху */
+  align-items: center; /* Центрируем содержимое */
   padding: 0 10px;
   gap: 6px;
-  z-index: 15; /* Оставляем ниже cargo-counter */
+  z-index: 15;
   pointer-events: none;
   max-width: 100%;
   margin: 0 auto;
@@ -205,6 +193,25 @@ body, html, #root, .App {
   padding: 0 10px;
   text-align: center;
   min-width: 0;
+}
+
+.action-menu .buttons-row {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.cargo-counter {
+  color: var(--neon-cyan);
+  font-size: 32px;
+  text-shadow: 0 0 5px var(--neon-cyan);
+  text-align: center;
+  margin-bottom: 10px; /* Отступ снизу, чтобы счётчик был над кнопками */
+  background: rgba(0, 0, 0, 0.7); /* Добавляем фон для лучшей читаемости */
+  padding: 5px 15px;
+  border-radius: 10px;
+  z-index: 20;
 }
 
 .bottom-menu {
@@ -229,11 +236,10 @@ body, html, #root, .App {
     padding-bottom: 80px;
   }
   .seif-image {
-    width: 180px; /* Уменьшаем размер для меньших экранов */
-    max-width: 35%;
+    width: 250px; /* Уменьшаем размер для меньших экранов */
+    max-width: 45%;
   }
   .cargo-counter {
-    bottom: 90px; /* Корректируем позицию счётчика */
     font-size: 28px;
   }
   .action-menu {
@@ -247,11 +253,10 @@ body, html, #root, .App {
     padding-bottom: 70px;
   }
   .seif-image {
-    width: 150px; /* Ещё уменьшаем */
-    max-width: 30%;
+    width: 200px; /* Ещё уменьшаем */
+    max-width: 40%;
   }
   .cargo-counter {
-    bottom: 80px; /* Корректируем позицию счётчика */
     font-size: 24px;
   }
   .action-menu {
