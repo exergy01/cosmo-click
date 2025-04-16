@@ -141,26 +141,22 @@ body, html, #root, .App {
   max-height: calc(100vh - 300px); /* Ограничиваем высоту */
 }
 
-.drone-image {
-  width: 250px; /* Уменьшаем размер дрона */
-  height: auto;
-  max-width: 45%; /* Адаптивный размер */
-}
-
 .seif-container {
   position: relative;
   display: flex;
   justify-content: center;
+  margin-left: auto; /* Прижимаем к правому краю */
+  margin-right: 10px; /* Небольшой отступ от края */
 }
 
 .seif-image {
-  width: 180px; /* Уменьшаем размер сейфа */
+  width: 220px; /* Увеличиваем размер сейфа */
   height: auto;
-  max-width: 35%; /* Адаптивный размер */
+  max-width: 40%; /* Адаптивный размер */
   filter: drop-shadow(0 0 10px var(--neon-cyan)) drop-shadow(0 0 20px var(--neon-cyan));
   transition: transform 0.3s ease;
   position: relative;
-  left: -50px; /* Уменьшаем смещение */
+  left: 0; /* Убираем смещение, так как выравниваем через margin */
 }
 
 .seif-image.clickable {
@@ -173,11 +169,11 @@ body, html, #root, .App {
 
 .cargo-counter {
   position: absolute;
-  bottom: 50px; /* Поднимаем счётчик выше action-menu */
+  bottom: 100px; /* Поднимаем счётчик выше action-menu */
   left: 50%;
   transform: translateX(-50%);
   color: var(--neon-cyan);
-  font-size: 32px; /* Уменьшаем шрифт */
+  font-size: 32px; /* Оставляем шрифт как в оригинале */
   text-shadow: 0 0 5px var(--neon-cyan);
   text-align: center;
   z-index: 20; /* Устанавливаем z-index выше action-menu */
@@ -192,7 +188,7 @@ body, html, #root, .App {
   justify-content: center;
   padding: 0 10px;
   gap: 6px;
-  z-index: 15; /* Уменьшаем z-index, чтобы cargo-counter был выше */
+  z-index: 15; /* Оставляем ниже cargo-counter */
   pointer-events: none;
   max-width: 100%;
   margin: 0 auto;
@@ -232,17 +228,12 @@ body, html, #root, .App {
     max-height: calc(100vh - 280px);
     padding-bottom: 80px;
   }
-  .drone-image {
-    width: 200px;
-    max-width: 40%;
-  }
   .seif-image {
-    width: 150px;
-    max-width: 30%;
-    left: -40px;
+    width: 180px; /* Уменьшаем размер для меньших экранов */
+    max-width: 35%;
   }
   .cargo-counter {
-    bottom: 40px;
+    bottom: 90px; /* Корректируем позицию счётчика */
     font-size: 28px;
   }
   .action-menu {
@@ -255,17 +246,12 @@ body, html, #root, .App {
     max-height: calc(100vh - 260px);
     padding-bottom: 70px;
   }
-  .drone-image {
-    width: 180px;
-    max-width: 35%;
-  }
   .seif-image {
-    width: 130px;
-    max-width: 25%;
-    left: -30px;
+    width: 150px; /* Ещё уменьшаем */
+    max-width: 30%;
   }
   .cargo-counter {
-    bottom: 35px;
+    bottom: 80px; /* Корректируем позицию счётчика */
     font-size: 24px;
   }
   .action-menu {
