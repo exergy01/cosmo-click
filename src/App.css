@@ -135,12 +135,16 @@ body, html, #root, .App {
   gap: 5px;
   z-index: 10;
   position: relative;
-  padding-bottom: 60px; /* Добавляем место для счётчика */
+  padding-bottom: 100px; /* Увеличиваем отступ, чтобы учесть action-menu */
+  flex-grow: 1;
+  overflow-y: auto; /* Добавляем прокрутку */
+  max-height: calc(100vh - 300px); /* Ограничиваем высоту */
 }
 
 .drone-image {
-  width: 450px;
+  width: 250px; /* Уменьшаем размер дрона */
   height: auto;
+  max-width: 45%; /* Адаптивный размер */
 }
 
 .seif-container {
@@ -150,12 +154,13 @@ body, html, #root, .App {
 }
 
 .seif-image {
-  width: 300px;
+  width: 180px; /* Уменьшаем размер сейфа */
   height: auto;
+  max-width: 35%; /* Адаптивный размер */
   filter: drop-shadow(0 0 10px var(--neon-cyan)) drop-shadow(0 0 20px var(--neon-cyan));
   transition: transform 0.3s ease;
   position: relative;
-  left: -100px;
+  left: -50px; /* Уменьшаем смещение */
 }
 
 .seif-image.clickable {
@@ -168,13 +173,14 @@ body, html, #root, .App {
 
 .cargo-counter {
   position: absolute;
-  bottom: 10px;
+  bottom: 50px; /* Поднимаем счётчик выше action-menu */
   left: 50%;
   transform: translateX(-50%);
   color: var(--neon-cyan);
-  font-size: 48px;
+  font-size: 32px; /* Уменьшаем шрифт */
   text-shadow: 0 0 5px var(--neon-cyan);
   text-align: center;
+  z-index: 20; /* Устанавливаем z-index выше action-menu */
 }
 
 .action-menu {
@@ -186,7 +192,7 @@ body, html, #root, .App {
   justify-content: center;
   padding: 0 10px;
   gap: 6px;
-  z-index: 30;
+  z-index: 15; /* Уменьшаем z-index, чтобы cargo-counter был выше */
   pointer-events: none;
   max-width: 100%;
   margin: 0 auto;
@@ -220,6 +226,54 @@ body, html, #root, .App {
   border-top: 1px solid rgba(0, 255, 255, 0.2);
 }
 
+/* Медиа-запросы для адаптивности */
+@media (max-height: 700px) {
+  .images-block {
+    max-height: calc(100vh - 280px);
+    padding-bottom: 80px;
+  }
+  .drone-image {
+    width: 200px;
+    max-width: 40%;
+  }
+  .seif-image {
+    width: 150px;
+    max-width: 30%;
+    left: -40px;
+  }
+  .cargo-counter {
+    bottom: 40px;
+    font-size: 28px;
+  }
+  .action-menu {
+    bottom: 70px;
+  }
+}
+
+@media (max-height: 600px) {
+  .images-block {
+    max-height: calc(100vh - 260px);
+    padding-bottom: 70px;
+  }
+  .drone-image {
+    width: 180px;
+    max-width: 35%;
+  }
+  .seif-image {
+    width: 130px;
+    max-width: 25%;
+    left: -30px;
+  }
+  .cargo-counter {
+    bottom: 35px;
+    font-size: 24px;
+  }
+  .action-menu {
+    bottom: 65px;
+  }
+}
+
+/* Оставшиеся стили без изменений */
 .neon-icon-button {
   flex: 1;
   height: 56px;
@@ -264,7 +318,7 @@ body, html, #root, .App {
 
 .tab-content {
   padding: 0;
-  padding-bottom: 80px; /* Добавляем отступ снизу, чтобы контент не пересекался с нижним меню */
+  padding-bottom: 80px;
   margin: 0;
   text-align: center;
   color: white;
@@ -903,12 +957,4 @@ body, html, #root, .App {
   height: 100vh;
   font-size: 24px;
   color: var(--neon-cyan);
-}
-
-.welcome-message {
-  text-align: center;
-  color: #00ff00; /* Неоново-зелёный цвет */
-  font-size: 14px;
-  margin-bottom: 10px;
-  text-shadow: 0 0 5px #00ff00, 0 0 10px #00ff00;
 }

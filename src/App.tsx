@@ -13,6 +13,10 @@ function App() {
   const [isPortrait, setIsPortrait] = useState(window.matchMedia("(orientation: portrait)").matches);
   const [cccToCsAmount, setCccToCsAmount] = useState('');
   const [csToCccAmount, setCsToCccAmount] = useState('');
+  const [localCargoCCC, setLocalCargoCCC] = useState(userData.cargoccc);
+  const [localEnergy, setLocalEnergy] = useState(userData.energy);
+  const [clicksSinceLastSync, setClicksSinceLastSync] = useState(0);
+  const [lastSyncTime, setLastSyncTime] = useState(Date.now());
   const BACKEND_URL = 'https://cosmo-click-backend.onrender.com';
 
   useEffect(() => {
@@ -63,6 +67,10 @@ function App() {
           asteroidresources: newAsteroidResources,
         }));
 
+        // Синхронизация локального состояния с userData
+        setLocalCargoCCC(newCargoCCC);
+        setLocalEnergy(userData.energy);
+
         // Отправляем обновление раз в 2 секунды
         if (userData.userId !== null && Date.now() - lastUpdate >= 2000) {
           lastUpdate = Date.now();
@@ -101,6 +109,51 @@ function App() {
       };
     }
   }, [userData.drones, userData.asteroids, userData.cargoccc, userData.asteroidresources, userData.userId, userData.cargolevel]);
+
+  // Синхронизация с сервером каждые 10 секунд
+  useEffect(() => {
+    const syncInterval = setInterval(() => {
+      if (clicksSinceLastSync > 0 && userData.userId !== null) {
+        fetch(`${BACKEND_URL}/click-seif`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: userData.userId,
+            clicks: clicksSinceLastSync,
+            cargoccc: localCargoCCC,
+            energy: localEnergy,
+            lastClickTimestamp: new Date(lastSyncTime).toISOString(),
+          }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success) {
+              setUserData((prev) => ({
+                ...prev,
+                cargoccc: localCargoCCC,
+                energy: localEnergy,
+              }));
+              setClicksSinceLastSync(0);
+              setLastSyncTime(Date.now());
+            } else {
+              console.error('Server rejected update:', data.error);
+              // Откатываем локальные изменения в случае ошибки
+              setLocalCargoCCC(userData.cargoccc);
+              setLocalEnergy(userData.energy);
+              setClicksSinceLastSync(0);
+            }
+          })
+          .catch((err) => {
+            console.error('Error syncing with server:', err);
+            setLocalCargoCCC(userData.cargoccc);
+            setLocalEnergy(userData.energy);
+            setClicksSinceLastSync(0);
+          });
+      }
+    }, 10000); // Каждые 10 секунд
+
+    return () => clearInterval(syncInterval);
+  }, [clicksSinceLastSync, localCargoCCC, localEnergy, userData.userId, lastSyncTime]);
 
   if (!isPortrait) {
     return (
@@ -188,10 +241,6 @@ function App() {
 
     return (
       <div className="top-bar">
-        {/* Добавляем приветственное сообщение с telegramId */}
-        <div className="welcome-message">
-          Добро пожаловать! Ваш Telegram ID: {telegramId || 'Не указан'}
-        </div>
         <div className="currency neon-border">
           <span className="label">CCC:</span>
           <span className="value">{Math.floor(userData.ccc * 100) / 100}</span>
@@ -228,21 +277,27 @@ function App() {
           <img
             src={`${process.env.PUBLIC_URL}/images/seif.png`}
             alt="Сейф"
-            className={`seif-image ${userData.cargoccc >= 1 && !isAutoCollect() ? 'clickable' : ''}`}
+            className={`seif-image ${localEnergy >= 1 ? 'clickable' : ''}`}
             onClick={() => {
-              if (userData.cargoccc >= 1 && !isAutoCollect() && userData.userId !== null) {
+              if (localEnergy >= 1) {
+                setLocalCargoCCC((prev) => prev + 1);
+                setLocalEnergy((prev) => prev - 1);
+                setClicksSinceLastSync((prev) => prev + 1);
+              }
+              if (localCargoCCC >= 1 && !isAutoCollect() && userData.userId !== null) {
                 fetch(`${BACKEND_URL}/collect-ccc`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ userId: userData.userId, amount: userData.cargoccc }),
+                  body: JSON.stringify({ userId: userData.userId, amount: localCargoCCC }),
                 })
                   .then((res) => res.json())
                   .then(() => {
                     setUserData((prev) => ({
                       ...prev,
-                      ccc: prev.ccc + prev.cargoccc,
+                      ccc: prev.ccc + localCargoCCC,
                       cargoccc: 0,
                     }));
+                    setLocalCargoCCC(0);
                     setGameData((prev) => ({
                       ...prev,
                       displayedResources: Math.floor(userData.asteroidresources),
@@ -253,7 +308,7 @@ function App() {
             }}
           />
         </div>
-        <div className="cargo-counter">{(userData.cargoccc || 0).toFixed(4)}</div>
+        <div className="cargo-counter">{localCargoCCC.toFixed(4)}</div>
       </div>
       <div className="action-menu">
         {actionMenuItems.map((item) => (
@@ -724,14 +779,4 @@ function App() {
           <button
             key={item.id}
             className={`neon-icon-button ${gameData.activeTab === item.id ? 'active' : ''}`}
-            onClick={() => setGameData((prev) => ({ ...prev, activeTab: item.id }))}
-          >
-            {item.icon}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export default App;
+            onClick={() => setGameData((prev) => ({ ...prev, activeTab: item.id
