@@ -312,15 +312,17 @@ function App() {
         {localCargoCCC > 0 && (
           <div className="cargo-counter">{localCargoCCC.toFixed(4)}</div>
         )}
-        {actionMenuItems.map((item) => (
-          <div
-            key={item.id}
-            className={`menu-button neon-border ${gameData.activeTab === item.id ? 'active' : ''}`}
-            onClick={() => setGameData((prev) => ({ ...prev, activeTab: item.id }))}
-          >
-            {item.label}
-          </div>
-        ))}
+        <div className="buttons-row">
+          {actionMenuItems.map((item) => (
+            <div
+              key={item.id}
+              className={`menu-button neon-border ${gameData.activeTab === item.id ? 'active' : ''}`}
+              onClick={() => setGameData((prev) => ({ ...prev, activeTab: item.id }))}
+            >
+              {item.label}
+            </div>
+          ))}
+        </div>
       </div>
     </>
   );
@@ -435,7 +437,7 @@ function App() {
                   Астероид №{asteroid.id} ({asteroid.resources} CCC) - {asteroid.cost} CS
                 </button>
               ))}
-          </div>
+            </div>
         );
       case "main-drones":
         return (
@@ -725,7 +727,7 @@ function App() {
                 className="menu-button neon-border"
                 onClick={() => setGameData((prev) => ({ ...prev, activeTab: 'game-space-thimbles' }))}
               >
-                Space Thimbles
+                Spaceсып Thimbles
               </button>
               <button
                 className="menu-button neon-border"
