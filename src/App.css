@@ -197,11 +197,11 @@ body, html, #root, .App {
 
 .action-menu .buttons-row {
   display: flex;
-  flex-direction: row; /* Уточняем, что кнопки в ряду */
+  flex-direction: row !important; /* Принудительно задаём горизонтальное расположение */
   justify-content: center;
   gap: 6px;
   width: 100%;
-  pointer-events: auto; /* Убедимся, что кнопки кликабельны */
+  pointer-events: auto;
 }
 
 .cargo-counter {
