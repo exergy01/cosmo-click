@@ -516,7 +516,7 @@ body, html, #root, .App {
   border: 1px solid var(--neon-cyan);
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.5);
-});
+}
 
 .balance-info {
   font-size: 14px;
