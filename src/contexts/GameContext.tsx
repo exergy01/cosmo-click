@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { useUser } from './UserContext'; // Убрали .tsx
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useUser } from './UserContext';
 
 interface GameData {
   activeTab: string;
@@ -14,11 +14,20 @@ interface GameContextType {
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { userData } = useUser();
+  const { userData, isLoading } = useUser();
   const [gameData, setGameData] = useState<GameData>({
     activeTab: 'bottom-rocket',
-    displayedResources: Math.floor(userData.asteroidResources),
+    displayedResources: 0, // Изначально 0, пока данные не загрузятся
   });
+
+  useEffect(() => {
+    if (!isLoading) {
+      setGameData((prev) => ({
+        ...prev,
+        displayedResources: Math.floor(userData.asteroidresources || 0),
+      }));
+    }
+  }, [isLoading, userData.asteroidresources]);
 
   return (
     <GameContext.Provider value={{ gameData, setGameData }}>

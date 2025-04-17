@@ -83,12 +83,12 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.log('User data fetched:', data);
         setUserData({
           userId: data.id,
-          ccc: data.ccc || 0,
-          cs: data.cs || 0,
-          energy: data.energy || 100,
-          asteroidresources: data.asteroidresources || 0,
-          cargoccc: data.cargoccc || 0,
-          cargolevel: data.cargolevel || 1,
+          ccc: Number(data.ccc) || 0,
+          cs: Number(data.cs) || 0,
+          energy: Number(data.energy) || 100,
+          asteroidresources: Number(data.asteroidresources) || 0,
+          cargoccc: Number(data.cargoccc) || 0,
+          cargolevel: Number(data.cargolevel) || 1,
           asteroids: data.asteroids ? JSON.parse(data.asteroids) : [],
           drones: data.drones ? JSON.parse(data.drones) : [],
           tasks: data.tasks ? JSON.parse(data.tasks) : Array(10).fill(false),
