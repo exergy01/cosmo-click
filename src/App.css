@@ -130,29 +130,29 @@ body, html, #root, .App {
 .images-block {
   margin-top: 4px;
   display: flex;
-  justify-content: center;
+  justify-content: flex-end; /* Изменили с center на flex-end */
   align-items: center;
   gap: 5px;
   z-index: 10;
   position: relative;
-  padding-bottom: 100px; /* Увеличиваем отступ, чтобы учесть action-menu */
+  padding-bottom: 100px;
   flex-grow: 1;
-  overflow-y: auto; /* Добавляем прокрутку */
-  max-height: calc(100vh - 300px); /* Ограничиваем высоту */
+  overflow-y: auto;
+  max-height: calc(100vh - 300px);
 }
 
 .seif-container {
   position: relative;
   display: flex;
   justify-content: center;
-  margin-left: auto; /* Прижимаем к правому краю */
-  margin-right: 10px; /* Небольшой отступ от края */
+  margin-left: auto;
+  margin-right: 10px;
 }
 
 .seif-image {
-  width: 390px; /* Увеличиваем размер сейфа на 30% (было 300px) */
+  width: 390px;
   height: auto;
-  max-width: 65%; /* Увеличиваем на 30% (было 50%) */
+  max-width: 65%;
   filter: drop-shadow(0 0 10px var(--neon-cyan)) drop-shadow(0 0 20px var(--neon-cyan));
   transition: transform 0.3s ease;
   position: relative;
@@ -172,8 +172,8 @@ body, html, #root, .App {
   left: 0;
   right: 0;
   display: flex;
-  flex-direction: column; /* Счётчик сверху, кнопки снизу */
-  align-items: center; /* Центрируем содержимое */
+  flex-direction: column;
+  align-items: center;
   padding: 0 10px;
   gap: 6px;
   z-index: 15;
@@ -197,7 +197,7 @@ body, html, #root, .App {
 
 .action-menu .buttons-row {
   display: flex;
-  flex-direction: row !important; /* Принудительно задаём горизонтальное расположение */
+  flex-direction: row !important;
   justify-content: center;
   gap: 6px;
   width: 100%;
@@ -209,8 +209,8 @@ body, html, #root, .App {
   font-size: 32px;
   text-shadow: 0 0 5px var(--neon-cyan);
   text-align: center;
-  margin-bottom: 10px; /* Отступ снизу, чтобы счётчик был над кнопками */
-  background: rgba(0, 0, 0, 0.7); /* Добавляем фон для лучшей читаемости */
+  margin-bottom: 10px;
+  background: rgba(0, 0, 0, 0.7);
   padding: 5px 15px;
   border-radius: 10px;
   z-index: 20;
@@ -238,8 +238,8 @@ body, html, #root, .App {
     padding-bottom: 80px;
   }
   .seif-image {
-    width: 325px; /* Увеличиваем на 30% (было 250px) */
-    max-width: 59%; /* Увеличиваем на 30% (было 45%) */
+    width: 325px;
+    max-width: 59%;
   }
   .cargo-counter {
     font-size: 28px;
@@ -255,8 +255,8 @@ body, html, #root, .App {
     padding-bottom: 70px;
   }
   .seif-image {
-    width: 260px; /* Увеличиваем на 30% (было 200px) */
-    max-width: 52%; /* Увеличиваем на 30% (было 40%) */
+    width: 260px;
+    max-width: 52%;
   }
   .cargo-counter {
     font-size: 24px;
