@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
-import cosmoBackground from './images/cosmo-bg.png'; // Обновили фон на cosmo-bg.png
+import cosmoBackground from './images/cosmo-bg.png';
 import { useUser } from './contexts/UserContext';
 import { useGame } from './contexts/GameContext';
 import ColorGuess from './components/games/ColorGuess';
@@ -17,6 +17,7 @@ function App() {
   const [localEnergy, setLocalEnergy] = useState(userData.energy);
   const [clicksSinceLastSync, setClicksSinceLastSync] = useState(0);
   const [lastSyncTime, setLastSyncTime] = useState(Date.now());
+  const [pendingCccToCollect, setPendingCccToCollect] = useState(0); // Для автосбора
   const BACKEND_URL = 'https://cosmo-click-backend.onrender.com';
 
   useEffect(() => {
@@ -43,20 +44,14 @@ function App() {
           const amountToCollect = Math.floor(newCargoCCC / 100) * 100;
           newCargoCCC -= amountToCollect;
 
+          // Локально обновляем ccc и накапливаем сумму для синхронизации
           setUserData((prev) => ({
             ...prev,
             ccc: prev.ccc + amountToCollect,
             cargoccc: newCargoCCC,
             asteroidresources: newAsteroidResources,
           }));
-
-          if (userData.userId !== null) {
-            fetch(`${BACKEND_URL}/collect-ccc`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId: userData.userId, amount: amountToCollect }),
-            }).catch((err) => console.error('Error collecting CCC:', err));
-          }
+          setPendingCccToCollect((prev) => prev + amountToCollect);
         } else if (userData.cargolevel !== 5) {
           newCargoCCC = Math.min(newCargoCCC, getCargoCapacity());
         }
@@ -71,8 +66,8 @@ function App() {
         setLocalCargoCCC(newCargoCCC);
         setLocalEnergy(userData.energy);
 
-        // Отправляем обновление раз в 2 секунды
-        if (userData.userId !== null && Date.now() - lastUpdate >= 2000) {
+        // Отправляем обновление раз в 10 секунд (оптимизация)
+        if (userData.userId !== null && Date.now() - lastUpdate >= 10000) {
           lastUpdate = Date.now();
           fetch(`${BACKEND_URL}/update-resources`, {
             method: 'POST',
@@ -81,8 +76,16 @@ function App() {
               userId: userData.userId,
               cargoccc: newCargoCCC,
               asteroidresources: newAsteroidResources,
+              ccc: userData.ccc, // Добавляем ccc для синхронизации автосбора
             }),
-          }).catch((err) => console.error('Error updating resources:', err));
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.success) {
+                setPendingCccToCollect(0); // Сбрасываем после успешной синхронизации
+              }
+            })
+            .catch((err) => console.error('Error updating resources:', err));
         }
       }, 1000);
 
@@ -95,6 +98,7 @@ function App() {
               userId: userData.userId,
               cargoccc: userData.cargoccc,
               asteroidresources: userData.asteroidresources,
+              ccc: userData.ccc,
             }),
             keepalive: true,
           }).catch((err) => console.error('Error saving data before unload:', err));
@@ -108,9 +112,9 @@ function App() {
         window.removeEventListener('beforeunload', saveDataBeforeUnload);
       };
     }
-  }, [userData.drones, userData.asteroids, userData.cargoccc, userData.asteroidresources, userData.userId, userData.cargolevel]);
+  }, [userData.drones, userData.asteroids, userData.cargoccc, userData.asteroidresources, userData.userId, userData.cargolevel, userData.ccc]);
 
-  // Синхронизация с сервером каждые 10 секунд
+  // Синхронизация кликов с сервером каждые 10 секунд
   useEffect(() => {
     const syncInterval = setInterval(() => {
       if (clicksSinceLastSync > 0 && userData.userId !== null) {
@@ -137,7 +141,6 @@ function App() {
               setLastSyncTime(Date.now());
             } else {
               console.error('Server rejected update:', data.error);
-              // Откатываем локальные изменения в случае ошибки
               setLocalCargoCCC(userData.cargoccc);
               setLocalEnergy(userData.energy);
               setClicksSinceLastSync(0);
@@ -150,7 +153,7 @@ function App() {
             setClicksSinceLastSync(0);
           });
       }
-    }, 10000); // Каждые 10 секунд
+    }, 10000);
 
     return () => clearInterval(syncInterval);
   }, [clicksSinceLastSync, localCargoCCC, localEnergy, userData.userId, lastSyncTime]);
