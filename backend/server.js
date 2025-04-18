@@ -33,20 +33,46 @@ const pool = new Pool({
 
 const PORT = process.env.PORT || 3001;
 
+// Данные дронов (аналогично клиенту)
+const droneData = [
+  { id: 1, cost: 1, income: 96 },
+  { id: 2, cost: 9, income: 129 },
+  { id: 3, cost: 17, income: 174 },
+  { id: 4, cost: 25, income: 236 },
+  { id: 5, cost: 34, income: 318 },
+  { id: 6, cost: 43, income: 430 },
+  { id: 7, cost: 52, income: 581 },
+  { id: 8, cost: 61, income: 784 },
+  { id: 9, cost: 70, income: 1059 },
+  { id: 10, cost: 80, income: 1430 },
+  { id: 11, cost: 90, income: 1930 },
+  { id: 12, cost: 100, income: 2606 },
+  { id: 13, cost: 110, income: 3518 },
+  { id: 14, cost: 120, income: 4750 },
+  { id: 15, cost: 130, income: 6595 },
+];
+
+// Данные карго (для проверки автосбора)
+const cargoData = [
+  { level: 1, capacity: 50, cost: 0 },
+  { level: 2, capacity: 200, cost: 5 },
+  { level: 3, capacity: 2000, cost: 15 },
+  { level: 4, capacity: 20000, cost: 45 },
+  { level: 5, capacity: Infinity, cost: 100, autoCollect: true },
+];
+
 app.post('/click-seif', async (req, res) => {
   const { userId, clicks, cargoccc, energy, lastClickTimestamp } = req.body;
   const now = new Date();
   const lastClick = new Date(lastClickTimestamp);
   const timeDiffSeconds = (now - lastClick) / 1000;
 
-  // Проверка: не больше 1 клика в секунду
   const maxPossibleClicks = Math.floor(timeDiffSeconds);
   if (clicks > maxPossibleClicks) {
     console.log(`Cheating detected: userId=${userId}, clicks=${clicks}, maxPossible=${maxPossibleClicks}`);
     return res.status(400).json({ success: false, error: "Подозрение на мошенничество: слишком много кликов" });
   }
 
-  // Проверка энергии
   const userResult = await pool.query('SELECT energy FROM users WHERE id = $1', [userId]);
   if (userResult.rows.length === 0) {
     return res.status(404).json({ success: false, message: 'User not found' });
@@ -58,10 +84,9 @@ app.post('/click-seif', async (req, res) => {
     return res.status(400).json({ success: false, error: "Подозрение на мошенничество: несоответствие энергии" });
   }
 
-  // Обновляем данные в базе
   await pool.query(
-    'UPDATE users SET cargoccc = $1, energy = $2 WHERE id = $3',
-    [cargoccc, energy, userId]
+    'UPDATE users SET cargoccc = $1, energy = $2, last_updated = $3 WHERE id = $4',
+    [cargoccc, energy, new Date(), userId]
   );
   res.json({ success: true });
 });
@@ -81,7 +106,8 @@ app.listen(PORT, async () => {
         cargolevel INTEGER DEFAULT 1,
         asteroids TEXT DEFAULT '[]',
         drones TEXT DEFAULT '[]',
-        tasks TEXT DEFAULT '[]'
+        tasks TEXT DEFAULT '[]',
+        last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
     console.log('Table "users" created or already exists');
@@ -116,22 +142,62 @@ app.listen(PORT, async () => {
   }
 });
 
-// Получение пользователя
+// Получение пользователя с расчётом ресурсов
 app.get('/user/:id', async (req, res) => {
   const userId = parseInt(req.params.id);
   try {
-    const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+    let userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
     if (userResult.rows.length === 0) {
       await pool.query(
-        `INSERT INTO users (id, ccc, cs, energy, asteroidresources, cargoccc, cargolevel, asteroids, drones, tasks)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        `INSERT INTO users (id, ccc, cs, energy, asteroidresources, cargoccc, cargolevel, asteroids, drones, tasks, last_updated)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          RETURNING *`,
-        [userId, 0, 0, 100, 0, 0, 1, '[]', '[]', JSON.stringify(Array(10).fill(false))]
+        [userId, 0, 0, 100, 0, 0, 1, '[]', '[]', JSON.stringify(Array(10).fill(false)), new Date()]
       );
-      const newUser = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
-      return res.json(newUser.rows[0]);
+      userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+      return res.json(userResult.rows[0]);
     }
-    res.json(userResult.rows[0]);
+
+    let user = userResult.rows[0];
+    const drones = JSON.parse(user.drones);
+    const asteroids = JSON.parse(user.asteroids);
+
+    // Рассчитываем ресурсы, если есть дроны и астероиды
+    if (drones.length > 0 && asteroids.length > 0 && user.asteroidresources > 0) {
+      const lastUpdated = new Date(user.last_updated || new Date());
+      const now = new Date();
+      const timeDiffSeconds = (now - lastUpdated) / 1000;
+
+      // Доход от дронов
+      const totalIncomePerDay = drones.reduce((sum, droneId) => sum + droneData[droneId - 1].income, 0);
+      const incomePerSecond = totalIncomePerDay / 86400;
+      let newCargoCCC = user.cargoccc + incomePerSecond * timeDiffSeconds;
+      let newAsteroidResources = Math.max(user.asteroidresources - incomePerSecond * timeDiffSeconds, 0);
+
+      let newCcc = user.ccc;
+      if (user.cargolevel === 5) {
+        // Автосбор
+        const amountToCollect = Math.floor(newCargoCCC / 100) * 100;
+        newCcc += amountToCollect;
+        newCargoCCC -= amountToCollect;
+      } else {
+        // Ограничение по вместимости карго
+        const cargoCapacity = cargoData[user.cargolevel - 1].capacity;
+        newCargoCCC = Math.min(newCargoCCC, cargoCapacity);
+      }
+
+      // Обновляем данные в базе
+      await pool.query(
+        'UPDATE users SET ccc = $1, cargoccc = $2, asteroidresources = $3, last_updated = $4 WHERE id = $5',
+        [newCcc, newCargoCCC, newAsteroidResources, now, userId]
+      );
+
+      // Получаем обновлённые данные
+      userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+      user = userResult.rows[0];
+    }
+
+    res.json(user);
   } catch (err) {
     console.error('Error fetching user:', err);
     res.status(500).json({ error: 'Server error' });
@@ -155,8 +221,8 @@ app.post('/collect-ccc', async (req, res) => {
   const { userId, amount } = req.body;
   try {
     await pool.query(
-      'UPDATE users SET ccc = ccc + $1, cargoccc = 0 WHERE id = $2',
-      [amount, userId]
+      'UPDATE users SET ccc = ccc + $1, cargoccc = 0, last_updated = $2 WHERE id = $3',
+      [amount, new Date(), userId]
     );
     res.json({ success: true });
   } catch (err) {
@@ -167,15 +233,15 @@ app.post('/collect-ccc', async (req, res) => {
 
 // Обновление ресурсов
 app.post('/update-resources', async (req, res) => {
-  const { userId, cargoccc, asteroidresources } = req.body;
-  console.log('Received update-resources request:', { userId, cargoccc, asteroidresources }); // Логирование запроса
+  const { userId, cargoccc, asteroidresources, ccc } = req.body;
+  console.log('Received update-resources request:', { userId, cargoccc, asteroidresources, ccc });
   try {
     if (cargoccc === undefined || asteroidresources === undefined || userId === undefined) {
       throw new Error('Missing required fields: userId, cargoccc, or asteroidresources');
     }
     await pool.query(
-      'UPDATE users SET cargoccc = $1, asteroidresources = $2 WHERE id = $3',
-      [cargoccc, asteroidresources, userId]
+      'UPDATE users SET ccc = $1, cargoccc = $2, asteroidresources = $3, last_updated = $4 WHERE id = $5',
+      [ccc, cargoccc, asteroidresources, new Date(), userId]
     );
     res.json({ success: true });
   } catch (err) {
@@ -202,8 +268,8 @@ app.post('/buy-asteroid', async (req, res) => {
     asteroids.push(asteroidId);
 
     await pool.query(
-      'UPDATE users SET cs = $1, asteroids = $2, asteroidresources = $3 WHERE id = $4',
-      [user.cs - cost, JSON.stringify(asteroids), user.asteroidresources + resources, userId]
+      'UPDATE users SET cs = $1, asteroids = $2, asteroidresources = $3, last_updated = $4 WHERE id = $5',
+      [user.cs - cost, JSON.stringify(asteroids), user.asteroidresources + resources, new Date(), userId]
     );
 
     res.json({ success: true });
@@ -231,8 +297,8 @@ app.post('/buy-drone', async (req, res) => {
     drones.push(droneId);
 
     await pool.query(
-      'UPDATE users SET cs = $1, drones = $2 WHERE id = $3',
-      [user.cs - cost, JSON.stringify(drones), userId]
+      'UPDATE users SET cs = $1, drones = $2, last_updated = $3 WHERE id = $4',
+      [user.cs - cost, JSON.stringify(drones), new Date(), userId]
     );
 
     res.json({ success: true });
@@ -257,8 +323,8 @@ app.post('/upgrade-cargo', async (req, res) => {
     }
 
     await pool.query(
-      'UPDATE users SET cs = $1, cargolevel = $2 WHERE id = $3',
-      [user.cs - cost, level, userId]
+      'UPDATE users SET cs = $1, cargolevel = $2, last_updated = $3 WHERE id = $4',
+      [user.cs - cost, level, new Date(), userId]
     );
 
     res.json({ success: true });
@@ -286,8 +352,8 @@ app.post('/complete-task', async (req, res) => {
     const newCs = userResult.rows[0].cs + 1;
 
     await pool.query(
-      'UPDATE users SET tasks = $1, cs = $2 WHERE id = $3',
-      [JSON.stringify(tasks), newCs, userId]
+      'UPDATE users SET tasks = $1, cs = $2, last_updated = $3 WHERE id = $4',
+      [JSON.stringify(tasks), newCs, new Date(), userId]
     );
 
     res.json({ success: true });
@@ -300,7 +366,7 @@ app.post('/complete-task', async (req, res) => {
 // Обмен CCC на CS
 app.post('/exchange-ccc-to-cs', async (req, res) => {
   const { userId, amountCCC } = req.body;
-  const rate = 100; // 100 CCC = 1 CS
+  const rate = 100;
   try {
     const userResult = await pool.query('SELECT ccc, cs FROM users WHERE id = $1', [userId]);
     if (userResult.rows.length === 0) {
@@ -314,8 +380,8 @@ app.post('/exchange-ccc-to-cs', async (req, res) => {
 
     const amountCS = amountCCC / rate;
     await pool.query(
-      'UPDATE users SET ccc = ccc - $1, cs = cs + $2 WHERE id = $3',
-      [amountCCC, amountCS, userId]
+      'UPDATE users SET ccc = ccc - $1, cs = cs + $2, last_updated = $3 WHERE id = $4',
+      [amountCCC, amountCS, new Date(), userId]
     );
 
     await pool.query(
@@ -333,7 +399,7 @@ app.post('/exchange-ccc-to-cs', async (req, res) => {
 // Обмен CS на CCC
 app.post('/exchange-cs-to-ccc', async (req, res) => {
   const { userId, amountCS } = req.body;
-  const rate = 50; // 1 CS = 50 CCC
+  const rate = 50;
   try {
     const userResult = await pool.query('SELECT ccc, cs FROM users WHERE id = $1', [userId]);
     if (userResult.rows.length === 0) {
@@ -347,8 +413,8 @@ app.post('/exchange-cs-to-ccc', async (req, res) => {
 
     const amountCCC = amountCS * rate;
     await pool.query(
-      'UPDATE users SET cs = cs - $1, ccc = ccc + $2 WHERE id = $3',
-      [amountCS, amountCCC, userId]
+      'UPDATE users SET cs = cs - $1, ccc = ccc + $2, last_updated = $3 WHERE id = $4',
+      [amountCS, amountCCC, new Date(), userId]
     );
 
     await pool.query(
