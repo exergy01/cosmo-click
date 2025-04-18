@@ -17,7 +17,6 @@ function App() {
   const [localEnergy, setLocalEnergy] = useState(userData.energy);
   const [clicksSinceLastSync, setClicksSinceLastSync] = useState(0);
   const [lastSyncTime, setLastSyncTime] = useState(Date.now());
-  const [pendingCccToCollect, setPendingCccToCollect] = useState(0); // Для автосбора
   const BACKEND_URL = 'https://cosmo-click-backend.onrender.com';
 
   useEffect(() => {
@@ -27,92 +26,60 @@ function App() {
     return () => mediaQuery.removeEventListener("change", handler);
   }, []);
 
-  // Логика добычи CCC дронами и автоматического сбора
+  // Синхронизация ресурсов с сервером каждые 10 секунд
   useEffect(() => {
-    if (userData.drones.length > 0 && userData.asteroids.length > 0 && userData.asteroidresources > 0) {
-      let lastUpdate = Date.now();
-      const interval = setInterval(() => {
-        const totalIncomePerDay = userData.drones.reduce((sum, droneId) => sum + droneData[droneId - 1].income, 0);
-        const incomePerSecond = totalIncomePerDay / 86400;
-        let newCargoCCC = userData.cargoccc + incomePerSecond;
-        let newAsteroidResources = Math.max(userData.asteroidresources - incomePerSecond, 0);
-
-        console.log(`Добыча CCC: cargolevel=${userData.cargolevel}, newCargoCCC=${newCargoCCC}, newAsteroidResources=${newAsteroidResources}, userId=${userData.userId}`);
-
-        if (userData.cargolevel === 5 && newCargoCCC >= 100) {
-          console.log(`Автоматический сбор срабатывает: cargoccc=${newCargoCCC}`);
-          const amountToCollect = Math.floor(newCargoCCC / 100) * 100;
-          newCargoCCC -= amountToCollect;
-
-          // Локально обновляем ccc и накапливаем сумму для синхронизации
-          setUserData((prev) => ({
-            ...prev,
-            ccc: prev.ccc + amountToCollect,
-            cargoccc: newCargoCCC,
-            asteroidresources: newAsteroidResources,
-          }));
-          setPendingCccToCollect((prev) => prev + amountToCollect);
-        } else if (userData.cargolevel !== 5) {
-          newCargoCCC = Math.min(newCargoCCC, getCargoCapacity());
-        }
-
-        setUserData((prev) => ({
-          ...prev,
-          cargoccc: newCargoCCC,
-          asteroidresources: newAsteroidResources,
-        }));
-
-        // Синхронизация локального состояния с userData
-        setLocalCargoCCC(newCargoCCC);
-        setLocalEnergy(userData.energy);
-
-        // Отправляем обновление раз в 10 секунд (оптимизация)
-        if (userData.userId !== null && Date.now() - lastUpdate >= 10000) {
-          lastUpdate = Date.now();
-          fetch(`${BACKEND_URL}/update-resources`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId: userData.userId,
-              cargoccc: newCargoCCC,
-              asteroidresources: newAsteroidResources,
-              ccc: userData.ccc, // Добавляем ccc для синхронизации автосбора
-            }),
+    const syncInterval = setInterval(() => {
+      if (userData.userId !== null) {
+        fetch(`${BACKEND_URL}/user/${userData.userId}`)
+          .then((res) => res.json())
+          .then((data) => {
+            setUserData((prev) => ({
+              ...prev,
+              ccc: Number(data.ccc) || 0,
+              cs: Number(data.cs) || 0,
+              energy: Number(data.energy) || 100,
+              asteroidresources: Number(data.asteroidresources) || 0,
+              cargoccc: Number(data.cargoccc) || 0,
+              cargolevel: Number(data.cargolevel) || 1,
+              asteroids: data.asteroids ? JSON.parse(data.asteroids) : [],
+              drones: data.drones ? JSON.parse(data.drones) : [],
+              tasks: data.tasks ? JSON.parse(data.tasks) : Array(10).fill(false),
+            }));
+            setGameData((prev) => ({
+              ...prev,
+              displayedResources: Math.floor(Number(data.asteroidresources) || 0),
+            }));
+            setLocalCargoCCC(Number(data.cargoccc) || 0);
+            setLocalEnergy(Number(data.energy) || 100);
           })
-            .then((res) => res.json())
-            .then((data) => {
-              if (data.success) {
-                setPendingCccToCollect(0); // Сбрасываем после успешной синхронизации
-              }
-            })
-            .catch((err) => console.error('Error updating resources:', err));
-        }
-      }, 1000);
+          .catch((err) => console.error('Error syncing resources:', err));
+      }
+    }, 10000);
 
-      const saveDataBeforeUnload = () => {
-        if (userData.userId !== null) {
-          fetch(`${BACKEND_URL}/update-resources`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId: userData.userId,
-              cargoccc: userData.cargoccc,
-              asteroidresources: userData.asteroidresources,
-              ccc: userData.ccc,
-            }),
-            keepalive: true,
-          }).catch((err) => console.error('Error saving data before unload:', err));
-        }
-      };
+    return () => clearInterval(syncInterval);
+  }, [userData.userId]);
 
-      window.addEventListener('beforeunload', saveDataBeforeUnload);
+  // Сохранение данных при закрытии приложения
+  useEffect(() => {
+    const saveDataBeforeUnload = () => {
+      if (userData.userId !== null) {
+        fetch(`${BACKEND_URL}/update-resources`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: userData.userId,
+            cargoccc: userData.cargoccc,
+            asteroidresources: userData.asteroidresources,
+            ccc: userData.ccc,
+          }),
+          keepalive: true,
+        }).catch((err) => console.error('Error saving data before unload:', err));
+      }
+    };
 
-      return () => {
-        clearInterval(interval);
-        window.removeEventListener('beforeunload', saveDataBeforeUnload);
-      };
-    }
-  }, [userData.drones, userData.asteroids, userData.cargoccc, userData.asteroidresources, userData.userId, userData.cargolevel, userData.ccc]);
+    window.addEventListener('beforeunload', saveDataBeforeUnload);
+    return () => window.removeEventListener('beforeunload', saveDataBeforeUnload);
+  }, [userData.userId, userData.cargoccc, userData.asteroidresources, userData.ccc]);
 
   // Синхронизация кликов с сервером каждые 10 секунд
   useEffect(() => {
